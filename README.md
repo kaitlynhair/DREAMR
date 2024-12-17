@@ -1,4 +1,4 @@
-ES Hackathon 2024 Project :rocket:
+# ES Hackathon 2024 Project :rocket:
 
 ## Background
 Meta-research rarely considers equity, diversity, and inclusion (EDI), meaning interventions designed to improve science could unintentionally disadvantage certain groups. Our project aims to address this by developing an automated workflow to evaluate the EDI characteristics of studies included in meta-research, similar to a 'Table 1' in clinical trials
