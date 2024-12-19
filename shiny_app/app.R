@@ -5,9 +5,11 @@ require(ASySD)
 require(bslib)
 require(dplyr)
 require(DT)
+require(ggplot2)
 require(htmlwidgets)
 require(knitr)
 require(networkD3)
+library(plotly)
 require(progressr)
 require(RCurl)
 require(readr)
@@ -68,13 +70,12 @@ ui <- fluidPage(
                  h4("Citation Summary"),
                  tableOutput("summaryTable"),
                  br(),
-                 h4("Percentage of DOI and PMID Presence"),
-                 tableOutput("percentageTable")
+                 h4("Data completeness"),
+                 DT::dataTableOutput("missing_data_table") %>% withSpinner(color="#754E9B", type=7),
         ),
         tabPanel("Transparency",
                  br(),
-                 h4("Author Distribution"),
-                 p("Author Distribution Visualization Placeholder") # Content placeholder
+                 plotlyOutput("oa_plot"),
         ),
         tabPanel("Author Institutions",
                  br(),
@@ -140,23 +141,18 @@ server <- function(input, output) {
       }
       rv$refdata <- citations
 
-      # Summary calculations
+      # Number of studies uploaded
       citation_summary <- rv$refdata %>%
-        select(source, label, file_name) %>%
+        select(file_name) %>%
         group_by(file_name) %>%
         add_count(name = "number_of_citations") %>%
         group_by(file_name, number_of_citations) %>%
         distinct() %>%
-        summarise(source = ifelse(all(is.na(source)), "", paste(ifelse(!is.na(source), source, NA), collapse = ", ")),
-                  label = ifelse(all(is.na(label)), "", paste(ifelse(!is.na(label), label, NA), collapse = ", "))) %>%
-        mutate(source = ifelse(str_length(source) > 10, "multiple", source),
-               label = ifelse(str_length(label) > 10, "multiple", label)) %>%
-        select(file_name, number_of_citations, label, source)
+        select(file_name, number_of_citations)
 
       rv$citation_summary <- citation_summary
 
       # Summary calculations
-
       oa_data <- process_oa_data(rv$refdata, global_south_country_codes, oa_identifier=input$identifierType)
       rv_oa_data_count <- length(oa_data$id)
       rv$oa_data <- oa_data
@@ -164,34 +160,143 @@ server <- function(input, output) {
     }
   })
 
-  # Output: Summary table
+  # Output: Summary table - how many studies uploaded----
   output$summaryTable <- renderTable({
-    rv$citation_summary
-    rv$oa_data_count
-  })
 
-  # Output: Percentage table (DOI and PMID presence)
-  output$percentageTable <- renderTable({
-    req(rv$refdata)
-    refdata <- rv$refdata
-
-    total_records <- nrow(refdata)
-
-    # Calculate DOI and PMID percentages
-    doi_present <- sum(!is.na(refdata$doi) & refdata$doi != "") / total_records * 100
-    pmid_present <- if ("pmid" %in% colnames(refdata)) {
-      sum(!is.na(refdata$pmid) & refdata$pmid != "") / total_records * 100
-    } else {
-      NA
-    }
-
-    percentage_table <- data.frame(
-      Metric = c("% DOI Present", "% PMID Present"),
-      Percentage = c(round(doi_present, 2), round(pmid_present, 2))
+    shiny::validate(
+      shiny::need(!is.null(rv$citation_summary), "")
     )
 
-    percentage_table
+    rv$citation_summary
   })
+
+  # Output: Data completeness table----
+  output$missing_data_table <- renderDT({
+
+    shiny::validate(
+      shiny::need(!is.null(rv$oa_data), "")
+    )
+
+    # original citations file, keeping identifier columns only
+    citations <- rv$refdata %>%
+      select(any_of(c("doi", "pmcid", "pmid", "title")))#
+
+    # join back to OG citations file to see how many are in open alex
+    combined_data <- right_join(citations, rv$oa_data)
+
+    check_cols <- c(names(rv$oa_data))
+    subset_data <- subset(combined_data, select = check_cols)
+
+    # Define what constitutes missing data
+    is_missing <- function(x) is.na(x) | x == "Unknown"
+
+    # Calculate missing counts and percentages
+    missing_counts <- colSums(apply(subset_data, 2, is_missing))
+    total_rows <- nrow(subset_data)
+    missing_percentages <- (missing_counts / total_rows) * 100
+
+    # Create a data frame with the missing counts and percentages for each column
+    missing_table <- data.frame(
+      field = names(missing_counts),
+      count_missing = missing_counts,
+      percentage_missing = round(missing_percentages, 1)
+    )
+
+    DT::datatable(missing_table,
+                  options = list(
+                    searching = FALSE,
+                    lengthChange = FALSE,
+                    pageLength = 20
+                  ),
+                  rownames = FALSE
+    ) %>%
+      formatStyle(
+        "percentage_missing",
+        target = "cell",
+        backgroundColor = styleInterval(
+          c(0, 25, 50, 75),
+          c("yellowgreen", "yellowgreen", "orange", "orange", "red")
+        ),
+        color = "white",
+        fontWeight = "bold",
+        borderRadius = "2px",
+        border = "2px solid",
+        borderColor = styleInterval(
+          c(0, 25, 50, 75),
+          c("yellowgreen", "yellowgreen", "orange", "orange", "red")
+        ),
+        padding = "3px",
+        display = "flex"
+      )
+  })
+
+  # Output: Bar chart of open access status----
+  output$oa_plot <- renderPlotly({
+    # Assume `df` is your dataset with `id` and `is_oa` columns
+
+    df <- rv$oa_data  # Replace with your actual data
+
+    # Preprocess data
+    oa_summary <- df %>%
+      mutate(is_oa = case_when(
+        is.na(is_oa) ~ "Unknown",
+        is_oa == "Unknown" ~ "Unknown",
+        TRUE ~ as.character(is_oa)
+      )) %>%
+      group_by(is_oa) %>%
+      summarise(count = n()) %>%
+      mutate(percentage = round((count / sum(count)) * 100, 1))
+
+    # Plot the data
+   p <- ggplot(oa_summary, aes(x = is_oa, y = count, fill = is_oa)) +
+      geom_bar(stat = "identity", width = 0.7) +
+      geom_text(aes(label = paste0(percentage, "%")), vjust = -0.5, size = 5) +
+      scale_fill_manual(values = c("TRUE" = "green", "FALSE" = "red", "Unknown" = "gray")) +
+      labs(
+        title = "Open Access Status",
+        x = "Open Access Status",
+        y = "Number of Papers",
+        fill = "OA Status"
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        axis.text.x = element_text(face = "bold")
+      )
+
+    # Convert to ggplotly for interactivity
+    ggplotly(p) %>%
+      layout(
+        hovermode = "closest",
+        hoverlabel = list(font = list(size = 12)),
+        xaxis = list(title = "Open Access Status"),
+        yaxis = list(title = "Number of Papers")
+      )
+  })
+
+  # # Output: Percentage table (DOI and PMID presence)
+  # output$percentageTable <- renderTable({
+  #   req(rv$refdata)
+  #   refdata <- rv$refdata
+  #
+  #   total_records <- nrow(refdata)
+  #
+  #   # Calculate DOI and PMID percentages
+  #   doi_present <- sum(!is.na(refdata$doi) & refdata$doi != "") / total_records * 100
+  #   pmid_present <- if ("pmid" %in% colnames(refdata)) {
+  #     sum(!is.na(refdata$pmid) & refdata$pmid != "") / total_records * 100
+  #   } else {
+  #     NA
+  #   }
+  #
+  #   percentage_table <- data.frame(
+  #     Metric = c("% DOI Present", "% PMID Present"),
+  #     Percentage = c(round(doi_present, 2), round(pmid_present, 2))
+  #   )
+  #
+  #   percentage_table
+  # })
 
 }
 
