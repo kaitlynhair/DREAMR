@@ -34,21 +34,22 @@ ui <- fluidPage(
   # Sidebar with file upload options
   sidebarLayout(
     sidebarPanel(
-      h4("Upload citations file ", icon("upload")),
+      h4("File upload ", icon("upload")),
       br(),
 
       shinyWidgets::prettyRadioButtons(
         inputId = "fileType",
-        label = "Choose a file type to upload",
-        inline = TRUE,
-        choices = c("Endnote XML",
-                    "CSV", "BIB", "RIS", "Zotero CSV", "Tab delimited"),
+        label = "Select file type:",
+        inline = FALSE,
+        choices = c("Endnote Export (XML)", "Zotero Export (CSV)",
+                    "Comma Separated Value (CSV)", "Tab Delimited (TXT)",
+                    "Bibliographic (BIB)", "Research Information Systems (RIS)"),
         status = "primary"),
       br(),
 
       # Input: select a file to upload
-      fileInput("uploadfile", "Choose file(s) to upload",
-                multiple = TRUE,
+      fileInput("uploadfile", "Choose file to upload:",
+                multiple = FALSE,
                 placeholder = "No file selected"),
     br(),
     prettyRadioButtons(
