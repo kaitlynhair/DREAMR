@@ -52,7 +52,8 @@ ui <- fluidPage(
       # Input: select a file to upload
       fileInput("uploadfile", "Choose file to upload:",
                 multiple = FALSE,
-                placeholder = "No file selected")),
+                placeholder = "No file selected",
+                options(shiny.maxRequestSize=1000*1024^2, timeout = 40000000))),
     
     # Main panel with tabs
     mainPanel(
