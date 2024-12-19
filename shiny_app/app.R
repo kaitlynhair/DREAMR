@@ -1,23 +1,29 @@
-source("process_data.R")
-require(shiny)
-require(readr)
-require(DT)
-library(shinyhelper)
-require(stringr)
+# Set up =======================================================================
+
+# Load libraries
+require(ASySD)
+require(bslib)
 require(dplyr)
-library(shinyalert)
-library(progressr)
-library(networkD3)
-library(rsconnect)
-library(RCurl)
-library(shiny)
-library(ASySD)
-library(shinythemes)
-library(knitr)
-library(shinycssloaders)
-library(htmlwidgets)
-library(shinyWidgets)
-library(bslib)
+require(DT)
+require(htmlwidgets)
+require(knitr)
+require(networkD3)
+require(progressr)
+require(RCurl)
+require(readr)
+require(rsconnect)
+require(shiny)
+require(shinyalert)
+require(shinycssloaders)
+require(shinyhelper)
+require(shinythemes)
+require(shinyWidgets)
+require(stringr)
+
+# Source functions
+source("process_data.R")
+
+# UI Code ======================================================================
 
 # Define UI for application
 ui <- fluidPage(
@@ -29,6 +35,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       h4("Upload citations file ", icon("upload")),
+      br(),
 
       shinyWidgets::prettyRadioButtons(
         inputId = "fileType",
@@ -82,6 +89,8 @@ ui <- fluidPage(
     )
   )
 )
+
+# Server Code ==================================================================
 
 # Define server logic
 server <- function(input, output) {
@@ -185,5 +194,6 @@ server <- function(input, output) {
 
 }
 
-# Run the application
+# Run the Application ==========================================================
+
 shinyApp(ui = ui, server = server)
