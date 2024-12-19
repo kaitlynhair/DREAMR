@@ -1,3 +1,4 @@
+source("process_data.R")
 require(shiny)
 require(readr)
 require(DT)
@@ -41,8 +42,15 @@ ui <- fluidPage(
       # Input: select a file to upload
       fileInput("uploadfile", "Choose file(s) to upload",
                 multiple = TRUE,
-                placeholder = "No file selected")
-    ),
+                placeholder = "No file selected"),
+    br(),
+    prettyRadioButtons(
+      inputId = "identifierType",
+      label = "Select Identifier to Process",
+      choices = c("doi", "pmid", "pmcid"),
+      inline = TRUE,
+      status = "success"
+    )),
 
     # Main panel with tabs
     mainPanel(
@@ -138,7 +146,8 @@ server <- function(input, output) {
       rv$citation_summary <- citation_summary
 
       # Summary calculations
-      oa_data <- oa_metadata(rv$refdata, identifier="doi")
+
+      oa_data <- process_oa_data(rv$refdata, global_south_country_codes, oa_identifier=input$identifierType)
       rv_oa_data_count <- length(oa_data$id)
       rv$oa_data <- oa_data
 
