@@ -110,17 +110,17 @@ server <- function(input, output) {
       return(NULL)
     } else {
       isolate(
-        if(input$fileType == "Endnote XML" & all(grepl(".xml$", input$uploadfile$name))){
+        if(input$fileType == "Endnote Export (XML)" & all(grepl(".xml$", input$uploadfile$name))){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "endnote")
-        } else if(input$fileType == "CSV" & all(grepl(".csv$", input$uploadfile$name))){
+        } else if(input$fileType == "Comma Separated Value (CSV)" & all(grepl(".csv$", input$uploadfile$name))){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "csv")
-        } else if(input$fileType == "Zotero CSV" & all(grepl(".csv$", input$uploadfile$name))){
+        } else if(input$fileType == "Zotero Export (CSV)" & all(grepl(".csv$", input$uploadfile$name))){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "zotero_csv")
-        } else if(input$fileType == "RIS" & all(grepl(".txt|.ris$", input$uploadfile$name))){
+        } else if(input$fileType == "Research Information Systems (RIS)" & all(grepl(".txt|.ris$", input$uploadfile$name))){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "ris")
-        } else if(input$fileType == "BIB" & all(grepl(".bib$", input$uploadfile$name))){
+        } else if(input$fileType == "Bibliographic (BIB)" & all(grepl(".bib$", input$uploadfile$name))){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "bib")
-        } else if(input$fileType == "Tab delimited"){
+        } else if(input$fileType == "Tab Delimited (TXT)"){
           citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "txt")
         } else {
           shinyalert("Wrong file type selected",
