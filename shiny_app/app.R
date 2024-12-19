@@ -21,25 +21,27 @@ require(shinyhelper)
 require(shinythemes)
 require(shinyWidgets)
 require(stringr)
+require(XML)
 
 # Source functions
 source("process_data.R")
 source("bar_plot.R")
+source("load_multi_search_pmid_pmcid.R")
 
 # UI Code ======================================================================
 
 # Define UI for application
 ui <- fluidPage(
-
+  
   # Application title
   titlePanel("DREAMR"),
-
+  
   # Sidebar with file upload options
   sidebarLayout(
     sidebarPanel(
       h4("File upload ", icon("upload")),
       br(),
-
+      
       shinyWidgets::prettyRadioButtons(
         inputId = "fileType",
         label = "Select file type:",
@@ -49,20 +51,13 @@ ui <- fluidPage(
                     "Bibliographic (BIB)", "Research Information Systems (RIS)"),
         status = "primary"),
       br(),
-
+      
       # Input: select a file to upload
       fileInput("uploadfile", "Choose file to upload:",
                 multiple = FALSE,
-                placeholder = "No file selected"),
-    br(),
-    prettyRadioButtons(
-      inputId = "identifierType",
-      label = "Select Identifier to Process",
-      choices = c("doi", "pmid", "pmcid"),
-      inline = TRUE,
-      status = "success"
-    )),
-
+                placeholder = "No file selected",
+                options(shiny.maxRequestSize=1000*1024^2, timeout = 40000000))),
+    
     # Main panel with tabs
     mainPanel(
       tabsetPanel(
@@ -99,33 +94,33 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
-
+  
   # Reactive values for storage
   rv <- shiny::reactiveValues()
   rv$refdata <- NULL
   rv$citation_summary <- data.frame()
   rv$oa_data <- NULL
-
+  
   # File upload event
   shiny::observeEvent(input$uploadfile, {
     shiny::validate(need(input$uploadfile != "", "Select your citation file to upload..."))
-
+    
     if (is.null(input$uploadfile)) {
       return(NULL)
     } else {
       isolate(
         if(input$fileType == "Endnote Export (XML)" & all(grepl(".xml$", input$uploadfile$name))){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "endnote")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "endnote")
         } else if(input$fileType == "Comma Separated Value (CSV)" & all(grepl(".csv$", input$uploadfile$name))){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "csv")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "csv")
         } else if(input$fileType == "Zotero Export (CSV)" & all(grepl(".csv$", input$uploadfile$name))){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "zotero_csv")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "zotero_csv")
         } else if(input$fileType == "Research Information Systems (RIS)" & all(grepl(".txt|.ris$", input$uploadfile$name))){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "ris")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "ris")
         } else if(input$fileType == "Bibliographic (BIB)" & all(grepl(".bib$", input$uploadfile$name))){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "bib")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "bib")
         } else if(input$fileType == "Tab Delimited (TXT)"){
-          citations <- load_multi_search(input$uploadfile$datapath, input$uploadfile$name, method = "txt")
+          citations <- load_multi_search_pmid_pmcid(input$uploadfile$datapath, input$uploadfile$name, method = "txt")
         } else {
           shinyalert("Wrong file type selected",
                      "The file extension doesn't match the selected upload format", type = "warning")
@@ -133,18 +128,19 @@ server <- function(input, output) {
           return()
         }
       )
-
+      
       # Ensure unique record_id
       if (length(unique(citations$record_id)) != nrow(citations)) {
         shinyalert("Unique identifier generated!",
                    "The record_id column within uploaded citations was not unique. ASySD has generated a unique record_id for each citation. You can preview this in the table.", type = "info")
-
+        
         citations <- citations %>%
           mutate(record_id = as.character(row_number() + 1000))
       }
       rv$refdata <- citations
 
-      # Number of studies uploaded
+      
+      # Summary calculations
       citation_summary <- rv$refdata %>%
         select(file_name) %>%
         group_by(file_name) %>%
@@ -154,12 +150,13 @@ server <- function(input, output) {
         select(file_name, number_of_citations)
 
       rv$citation_summary <- citation_summary
+      
+      # Summary calculations      
+      oa_data <- process_oa_data(rv$refdata, global_south_country_codes)
 
-      # Summary calculations
-      oa_data <- process_oa_data(rv$refdata, global_south_country_codes, oa_identifier=input$identifierType)
       rv_oa_data_count <- length(oa_data$id)
       rv$oa_data <- oa_data
-
+      
     }
   })
 
