@@ -99,7 +99,7 @@ process_oa_data <- function(data, global_south_country_codes, oa_identifier=c("p
 
   # Merging final results
   oa_results_final <- oa_results %>%
-    select(title, doi, id, is_oa, language, cited_by_count) %>%
+    select(title, doi, id, is_oa, language, publication_year, cited_by_count) %>%
     left_join(first_author_career_stage, by="id") %>%
     left_join(last_author_career_stage, by="id") %>%
     left_join(institutions_last_author) %>%
