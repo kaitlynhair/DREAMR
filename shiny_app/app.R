@@ -25,6 +25,7 @@ require(XML)
 
 # Source functions
 source("process_data.R")
+source("bar_plot.R")
 source("load_multi_search_pmid_pmcid.R")
 
 # UI Code ======================================================================
@@ -63,7 +64,7 @@ ui <- fluidPage(
         tabPanel("Summary of Uploaded Studies",
                  br(),
                  h4("Citation Summary"),
-                 tableOutput("summaryTable"),
+                 tableOutput("upload_summary"),
                  br(),
                  h4("Data completeness"),
                  DT::dataTableOutput("missing_data_table") %>% withSpinner(color="#754E9B", type=7),
@@ -74,13 +75,15 @@ ui <- fluidPage(
         ),
         tabPanel("Author Institutions",
                  br(),
-                 h4("Author Distribution"),
-                 p("Author Distribution Visualization Placeholder") # Content placeholder
+                 plotlyOutput("gs_plot")
         ),
-        tabPanel("Author Location",
+        tabPanel("Raw table",
                  br(),
-                 h4("Author Distribution"),
-                 p("Author Distribution Visualization Placeholder") # Content placeholder
+                 tableOutput("raw_table"),
+        ),
+        tabPanel("Summary table",
+                 br(),
+                 uiOutput("summary_table")
         )
       )
     )
@@ -158,7 +161,7 @@ server <- function(input, output) {
   })
 
   # Output: Summary table - how many studies uploaded----
-  output$summaryTable <- renderTable({
+  output$upload_summary <- renderTable({
 
     shiny::validate(
       shiny::need(!is.null(rv$citation_summary), "")
@@ -229,47 +232,134 @@ server <- function(input, output) {
 
   # Output: Bar chart of open access status----
   output$oa_plot <- renderPlotly({
-    # Assume `df` is your dataset with `id` and `is_oa` columns
+    req(rv$oa_data)  # Ensure column is selected
+    bar_plot(rv$oa_data, "is_oa", "% Open Access")
+  })
 
-    df <- rv$oa_data  # Replace with your actual data
+  # Output: Bar chart of open access status----
+output$gs_plot <- renderPlotly({
+  req(rv$oa_data)  # Ensure column is selected
+  bar_plot(rv$oa_data, "first_author_global_south", "first_auht% first authors from Global South")
+})
 
-    # Preprocess data
-    oa_summary <- df %>%
-      mutate(is_oa = case_when(
-        is.na(is_oa) ~ "Unknown",
-        is_oa == "Unknown" ~ "Unknown",
-        TRUE ~ as.character(is_oa)
-      )) %>%
+  # Output: Raw data table - how many studies uploaded----
+  output$raw_table <- renderTable({
+
+    shiny::validate(
+      shiny::need(!is.null(rv$citation_summary), "")
+    )
+
+    rv$oa_result
+  })
+
+  output$summary_table <- renderUI({
+
+    year <- rv$oa_data %>%
+      group_by(publication_year) %>%
+      count(name="Number of papers") %>%
+      rename(variable = publication_year) %>%
+      ungroup() %>%
+      mutate(variable = as.character(variable))
+
+    oa_status <-  rv$oa_data %>%
       group_by(is_oa) %>%
-      summarise(count = n()) %>%
-      mutate(percentage = round((count / sum(count)) * 100, 1))
+      count(name="Number of papers") %>%
+      rename(variable = is_oa)%>%
+      ungroup() %>%
+      mutate(variable = as.character(variable))
 
-    # Plot the data
-   p <- ggplot(oa_summary, aes(x = is_oa, y = count, fill = is_oa)) +
-      geom_bar(stat = "identity", width = 0.7) +
-      geom_text(aes(label = paste0(percentage, "%")), vjust = -0.5, size = 5) +
-      scale_fill_manual(values = c("TRUE" = "green", "FALSE" = "red", "Unknown" = "gray")) +
-      labs(
-        title = "Open Access Status",
-        x = "Open Access Status",
-        y = "Number of Papers",
-        fill = "OA Status"
-      ) +
-      theme_minimal(base_size = 14) +
-      theme(
-        legend.position = "none",
-        plot.title = element_text(hjust = 0.5, face = "bold"),
-        axis.text.x = element_text(face = "bold")
-      )
+    first_author_country <- rv$oa_data %>%
+      group_by(is_oa) %>%
+      count(name="Number of papers") %>%
+      rename(variable = is_oa)%>%
+      ungroup() %>%
+      mutate(variable = as.character(variable))
 
-    # Convert to ggplotly for interactivity
-    ggplotly(p) %>%
-      layout(
-        hovermode = "closest",
-        hoverlabel = list(font = list(size = 12)),
-        xaxis = list(title = "Open Access Status"),
-        yaxis = list(title = "Number of Papers")
-      )
+    citations <-  rv$oa_data %>%
+      group_by(id) %>%
+      summarise("mean_citations" = mean(cited_by_count))
+
+    languages <-  rv$oa_data %>%
+      group_by(language) %>%
+      count(name="Number of papers") %>%
+      rename(variable = language)%>%
+      ungroup()
+
+    gs_first <-  rv$oa_data %>%
+      group_by(first_author_global_south) %>%
+      count(name="Number of papers") %>%
+      rename(variable = first_author_global_south)%>%
+      ungroup() %>%
+      mutate(variable = as.character(variable)) %>%
+      mutate(variable = ifelse(is.na(variable), "Unknown", variable))
+
+    gs_last <-  rv$oa_data %>%
+      group_by(last_author_global_south) %>%
+      count(name="Number of papers") %>%
+      rename(variable = last_author_global_south)%>%
+      ungroup() %>%
+      mutate(variable = as.character(variable)) %>%
+      mutate(variable = ifelse(is.na(variable), "Unknown", variable))
+
+    first_auth_country <-  rv$oa_data %>%
+      group_by(first_author_country) %>%
+      count(name = "Number of papers") %>%
+      mutate(
+        # Replace countries with NA as "Unknown"
+        first_author_country = ifelse(is.na(first_author_country), "Unknown", first_author_country),
+
+        # Replace countries with <= 5 papers with "Other"
+        first_author_country = ifelse(`Number of papers` > 1, first_author_country, "Other")
+      ) %>%
+      group_by(first_author_country) %>%  # Group by country or "Other" or "Unknown"
+      summarize(Number_of_papers = sum(`Number of papers`)) %>%  # Sum the papers in each group
+      arrange(desc(Number_of_papers)) %>%
+      ungroup() %>%
+      rename(variable = first_author_country) %>%
+      rename(`Number of papers` = Number_of_papers)
+
+    last_auth_country <-  rv$oa_data %>%
+      group_by(last_author_country) %>%
+      count(name = "Number of papers") %>%
+      mutate(
+        # Replace countries with NA as "Unknown"
+        last_author_country = ifelse(is.na(last_author_country), "Unknown", last_author_country),
+
+        # Replace countries with <= 5 papers with "Other"
+        last_author_country = ifelse(`Number of papers` > 1, last_author_country, "Other")
+      ) %>%
+      group_by(last_author_country) %>%  # Group by country or "Other" or "Unknown"
+      summarize(Number_of_papers = sum(`Number of papers`)) %>%  # Sum the papers in each group
+      arrange(desc(Number_of_papers)) %>%
+      ungroup() %>%
+      rename(variable = last_author_country) %>%
+      rename(`Number of papers` = Number_of_papers)
+
+    # Create a list of the data frames to be added
+    dfs <- list(year, oa_status, languages, first_auth_country, gs_first, last_auth_country, gs_last)
+
+    # Calculate start and end rows
+    start_row <- cumsum(c(1, sapply(dfs, nrow)))[-length(dfs)]  # All start rows, except the last group
+    end_row <- cumsum(sapply(dfs, nrow))  # Cumulative end row for each group
+
+    # Create the frequency table by adding rows from each data frame
+    freq_table <- bind_rows(dfs)
+
+    # Create the group labels corresponding to each group of rows
+    group_labels <- c("Year", "Open Access Status", "Language", "First Author Country",
+                      "First Author Global South", "Last Author Country", "Last Author Global South")
+
+    table_html <- knitr::kable(freq_table) %>%
+      kableExtra::group_rows(group_label = group_labels[1], start_row = start_row[1], end_row = end_row[1]) %>%
+      kableExtra::group_rows(group_label = group_labels[2], start_row = start_row[2], end_row = end_row[2]) %>%
+      kableExtra::group_rows(group_label = group_labels[3], start_row = start_row[3], end_row = end_row[3]) %>%
+      kableExtra::group_rows(group_label = group_labels[4], start_row = start_row[4], end_row = end_row[4]) %>%
+      kableExtra::group_rows(group_label = group_labels[5], start_row = start_row[5], end_row = end_row[5]) %>%
+      kableExtra::group_rows(group_label = group_labels[6], start_row = start_row[6], end_row = end_row[6]) %>%
+      kableExtra::group_rows(group_label = group_labels[7], start_row = end_row[6] + 1, end_row = end_row[7]) %>%
+      kableExtra::kable_styling("striped", full_width = FALSE)
+
+    HTML(as.character(table_html))
   })
 
   # # Output: Percentage table (DOI and PMID presence)
