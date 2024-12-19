@@ -11,10 +11,16 @@ process_oa_data <- function(data, global_south_country_codes, oa_identifier=c("p
   # Fetch OpenAlex metadata
   oa_results <- oa_metadata(data, identifier=oa_identifier)
 
-  # Language analysis
-  language_summary <- oa_results %>%
-    select(language, id) %>%
-    distinct()
+
+  # Get funders
+  funders <- extract_funder(oa_results)
+  funders <- soles::format_doi(funders)
+  funders <- funders %>%
+    filter(!funder_name =="Unknown") %>%
+    group_by(id) %>%
+    slice_head() %>%
+    ungroup() %>%
+    select(id, funder_name)
 
   # Get institutions - first author
   institutions_first_author <- extract_institution(oa_results, author_position = "first")
@@ -82,17 +88,14 @@ process_oa_data <- function(data, global_south_country_codes, oa_identifier=c("p
 
   # Global south classification
   global_south_first_author <- extract_institution(oa_results, author_position = "first") %>%
-    mutate(is_global_south = ifelse(institution_country_code %in% global_south_country_codes, TRUE, FALSE)) %>%
-    select(doi, id, institution_id, is_global_south) %>%
+    mutate(first_author_global_south = ifelse(institution_country_code %in% global_south_country_codes, TRUE, FALSE)) %>%
+    select(doi, id, institution_id, first_author_global_south) %>%
     unique()
 
   global_south_last_author <- extract_institution(oa_results, author_position = "last") %>%
-    mutate(is_global_south = ifelse(institution_country_code %in% global_south_country_codes, TRUE, FALSE)) %>%
-    select(doi, id, institution_id, is_global_south) %>%
+    mutate(last_author_global_south = ifelse(institution_country_code %in% global_south_country_codes, TRUE, FALSE)) %>%
+    select(doi, id, institution_id, last_author_global_south) %>%
     unique()
-
-  global_south_first_author <- left_join(institutions_first, global_south_first_author) %>% rename(is_first_author_global_south = is_global_south) %>%select(is_first_author_global_south, doi)
-  global_south_last_author <- left_join(institutions_last, global_south_last_author) %>% rename(is_last_author_global_south = is_global_south) %>% select(is_last_author_global_south, doi)
 
   # Merging final results
   oa_results_final <- oa_results %>%
@@ -101,9 +104,9 @@ process_oa_data <- function(data, global_south_country_codes, oa_identifier=c("p
     left_join(last_author_career_stage, by="id") %>%
     left_join(institutions_last_author) %>%
     left_join(institutions_first_author) %>%
-    left_join(institutions_last) %>%
-    left_join(institutions_first) %>%
-    left_join(funders) %>%
+    left_join(global_south_first_author) %>%
+    left_join(global_south_last_author) %>%
+    left_join(funders, by="id") %>%
     unique()
 
   return(oa_results_final)
