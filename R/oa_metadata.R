@@ -39,6 +39,7 @@ oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
     message("Couldn't tag any more records.")
   }
 
+  Sys.sleep(2) # adding a 2 second system sleep between calls to avoid API limits
   return(res)
 }
 
@@ -71,6 +72,7 @@ extract_institution <- function(data, author_position = "first") {
     tidyr::unnest(author) %>%
     dplyr::filter(author_position == !!author_position) %>%
     dplyr::select(
+      id,
       doi,
       institution_id,
       name = institution_display_name,
@@ -96,6 +98,7 @@ extract_institution <- function(data, author_position = "first") {
       method = "OpenAlex"
     ) %>%
     dplyr::select(
+      id,
       doi,
       institution_id,
       name,
@@ -130,7 +133,7 @@ extract_funder <- function(data) {
 
     # Step 1: Extract funder information and unnest grants
     res_funder <- data %>%
-      dplyr::select(doi, grants) %>%
+      dplyr::select(id, doi, grants) %>%
       dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
       tidyr::unnest_longer(grants) %>%
       dplyr::filter(!is.na(grants))
@@ -157,7 +160,7 @@ extract_funder <- function(data) {
         dplyr::select(-grants_id, funder_name = grants, doi) %>%
         dplyr::mutate(method = "OpenAlex") %>%
         replace(is.na(.), "Unknown") %>%
-        select(doi, funder_name, award_id, method)
+        select(id, doi, funder_name, award_id, method)
 
     }
       # Step 3: Handle DOIs with missing funder information
@@ -168,7 +171,7 @@ extract_funder <- function(data) {
           award_id = "Unknown",
           method = "OpenAlex"
         ) %>%
-        select(doi, funder_name, award_id, method)
+        select(id, doi, funder_name, award_id, method)
 
       # Step 4: Combine successful and failed funder data
       res_funder <- dplyr::bind_rows(res_funder, res_funder_failed)

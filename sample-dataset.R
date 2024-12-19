@@ -13,13 +13,13 @@ test <- dat %>%
 result <- oa_metadata(test, identifier="pmid")
 
 # how much publication language?
-language <- result %>% group_by(doi) %>% select(language, id) %>% unique()
+language <- result %>% group_by(id) %>% select(language, id) %>% unique()
 
 # get institutions
 institutions_first <- extract_institution(result, author_position="first")
 institutions_first <- institutions_first %>%
   filter(!institution_id =="Unknown") %>%
-  group_by(doi) %>%
+  group_by(id) %>%
   slice_head()
 length(unique(institutions_first$doi))
 
@@ -27,18 +27,16 @@ length(unique(institutions_first$doi))
 institutions_last <- extract_institution(result,  author_position="last")
 institutions_last <- institutions_last %>%
   filter(!institution_id =="Unknown") %>%
-  group_by(doi) %>%
+  group_by(id) %>%
   slice_head()
 length(unique(institutions_last$doi))
-
-save(authors, file="authors.Rdata")
 
 # get funders
 funders <- extract_funder(result)
 funders <- soles::format_doi(funders)
 funders <- funders %>%
   filter(!funder_name =="Unknown") %>%
-  group_by(doi) %>%
+  group_by(id) %>%
   slice_head()
 length(unique(funders$doi))
 
@@ -65,7 +63,7 @@ result_checked <- oa_metadata(check, identifier="pmid")
 institutions_first_author <- extract_institution(result_checked, author_position = "first")
 institutions_first_author <- institutions_first_author %>%
   filter(!institution_id =="Unknown") %>%
-  group_by(doi) %>%
+  group_by(id) %>%
   slice_head() %>%
   select(name, doi, institution_country_code) %>%
   rename(last_author_institution = name, first_author_country=institution_country_code)
@@ -74,7 +72,7 @@ institutions_first_author <- institutions_first_author %>%
 institutions_last_author <- extract_institution(result_checked, author_position = "last")
 institutions_last_author <- institutions_last_author %>%
   filter(!institution_id =="Unknown") %>%
-  group_by(doi) %>%
+  group_by(id) %>%
   slice_head() %>%
   select(name, doi, institution_country_code) %>%
   rename(last_author_institution = name, last_author_country=institution_country_code)
@@ -124,6 +122,7 @@ last_author_career_stage <- last_author_career_stage %>%
   select(last_author_years_active, id)
 
 # how many global south?
+# NOTE: there is nothing called institutions
 global_south <- institutions %>%
   mutate(is_global_south = ifelse(institution_country_code %in% global_south_country_codes, TRUE, FALSE)) %>%
   select(doi, institution_id, is_global_south) %>%
