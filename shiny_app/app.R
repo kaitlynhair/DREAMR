@@ -238,7 +238,8 @@ server <- function(input, output) {
   })
 
   # Output: Download multiple files ----
-  output$download_all <- downloadHandler(
+  output$download_raw_table<- downloadHandler(
+    
     filename = function() {
       paste0("openalex_results_", Sys.Date(), ".zip")
     },
