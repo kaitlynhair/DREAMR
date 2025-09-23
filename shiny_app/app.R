@@ -30,6 +30,14 @@ source("load_studies.R")
 source("get_first_active_year.R")
 source("exports.R")
 
+# To use development build, set to TRUE
+is_dev_build <- FALSE
+# TO DO: use environment variable to avoid committing dev build to GitHub
+# is_dev_build <- Sys.getenv("SHINY_ENV", unset = "prod") == "dev"  # doesn't work?
+if (is_dev_build) {
+  require(digest)  # to generate hash for caching
+}
+
 # UI Code ======================================================================
 
 # Define UI for application
@@ -48,7 +56,7 @@ ui <- fluidPage(
   ),
 
   # Application title
-  titlePanel("DREAMR"),
+  titlePanel(if (is_dev_build) "DREAMR (dev)" else "DREAMR"),
 
   # Sidebar with file upload options
   sidebarLayout(
@@ -165,7 +173,10 @@ server <- function(input, output) {
     shiny::validate(need(rv$refdata, "No reference data available"))
 
     # Extract OpenAlex data
-    oa_data <- dreamr_extract(rv$refdata)
+    if (is_dev_build) 
+      oa_data <- dreamr_extract_cached(rv$refdata)
+    else
+      oa_data <- dreamr_extract(rv$refdata)
 
     rv$authors <- oa_data$authors
     rv$institutions <- oa_data$institutions

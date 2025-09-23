@@ -1,3 +1,32 @@
+dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8) {
+  # Ensure .cache folder exists
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir)
+  }
+
+  # Generate hash of refdata
+  hash <- digest(refdata, algo = "xxhash64")
+  short_hash <- substr(hash, 1, hash_length)
+
+  # Look for matching file in cache
+  files <- list.files(cache_dir, pattern = paste0("^", short_hash), full.names = TRUE)
+
+  if (length(files) > 0) {
+    message("✅ Cache hit: Loading ", basename(files[[1]]))
+    return(readRDS(files[[1]]))
+  }
+
+  # Otherwise, compute and save
+  message("⏳ Cache miss: Running dreamr_extract() and saving to cache")
+  result <- dreamr_extract(refdata)
+
+  # Save with full hash in filename
+  saveRDS(result, file = file.path(cache_dir, paste0(short_hash, "_oa_data.rds")))
+
+  return(result)
+}
+
+
 #' Extract Paper, Author, and Institution Data from OpenAlex
 #'
 #' This function retrieves and processes OpenAlex data for a given set of papers.
