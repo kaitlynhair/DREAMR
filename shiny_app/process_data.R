@@ -22,7 +22,7 @@
 #' @export
 dreamr_extract <- function(data) {
 
-  # Pull raw OpenAlex results
+  # Pull raw OpenAlex results 
   oa_results <- pull_openalex(data)
 
   # Add funder information
@@ -197,8 +197,8 @@ pull_openalex <- function(data) {
       oa_result <- oa_result %>% mutate(ab = NA)
     }
     oa_results <- rbind(oa_result, oa_results)
-  }
-  return(unique(oa_results))
+  } 
+  return(oa_results)
 }
 
 # Example Usage
@@ -606,12 +606,19 @@ oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
 
   # Create a dataframe with data from OpenAlex
   for (i in seq_along(data[[identifier_col]])) {
+    new <- NULL
     suppressWarnings({
-      try(new <- openalexR::oa_fetch(
-        identifier = data[[identifier_col]][i],
-        entity = "works"
-      ), silent = TRUE)
+      ans <- try(
+        openalexR::oa_fetch(
+          identifier = data[[identifier_col]][i],
+          entity = "works"
+        ),
+        silent = TRUE
+      )
     })
+    if (!inherits(ans, "try-error") && is.data.frame(ans)) {
+      new <- ans
+    }
     if (is.data.frame(new)) {
       res <- dplyr::bind_rows(res, new)
     }
