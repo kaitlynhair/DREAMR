@@ -29,6 +29,13 @@ source("summary_table.R")
 source("load_studies.R")
 source("get_first_active_year.R")
 
+# To use development build, set to TRUE
+# TO DO: use environment variable to avoid committing dev build to GitHub
+is_dev_build <- FALSE
+if (is_dev_build) {
+  require(digest)
+}
+
 # UI Code ======================================================================
 
 # Define UI for application
@@ -47,7 +54,7 @@ ui <- fluidPage(
   ),
 
   # Application title
-  titlePanel("DREAMR"),
+  titlePanel(if (is_dev_build) "DREAMR (dev)" else "DREAMR"),
 
   # Sidebar with file upload options
   sidebarLayout(
