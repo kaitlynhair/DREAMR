@@ -56,3 +56,5 @@ renv/staging/
 
 # Notebooks
 .ipynb_checkpoints/
+
+*/.cache

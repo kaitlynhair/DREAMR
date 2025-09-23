@@ -1,3 +1,32 @@
+dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8) {
+  # Ensure .cache folder exists
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir)
+  }
+
+  # Generate hash of refdata
+  hash <- digest(refdata, algo = "xxhash64")
+  short_hash <- substr(hash, 1, hash_length)
+
+  # Look for matching file in cache
+  files <- list.files(cache_dir, pattern = paste0("^", short_hash), full.names = TRUE)
+
+  if (length(files) > 0) {
+    message("✅ Cache hit: Loading ", basename(files[[1]]))
+    return(readRDS(files[[1]]))
+  }
+
+  # Otherwise, compute and save
+  message("⏳ Cache miss: Running dreamr_extract() and saving to cache")
+  result <- dreamr_extract(refdata)
+
+  # Save with full hash in filename
+  saveRDS(result, file = file.path(cache_dir, paste0(short_hash, "_oa_data.rds")))
+
+  return(result)
+}
+
+
 #' Extract Paper, Author, and Institution Data from OpenAlex
 #'
 #' This function retrieves and processes OpenAlex data for a given set of papers.
@@ -22,7 +51,7 @@
 #' @export
 dreamr_extract <- function(data) {
 
-  # Pull raw OpenAlex results
+  # Pull raw OpenAlex results 
   oa_results <- pull_openalex(data)
 
   # Add funder information
@@ -205,9 +234,10 @@ pull_openalex <- function(data) {
       oa_results <- rbind(oa_result, oa_results)
       
     }
-  }
-  
-  return(unique(oa_results))
+    oa_results <- rbind(oa_result, oa_results)
+  } 
+  return(oa_results)
+
 }
 
 # Example Usage
@@ -615,12 +645,19 @@ oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
 
   # Create a dataframe with data from OpenAlex
   for (i in seq_along(data[[identifier_col]])) {
+    new <- NULL
     suppressWarnings({
-      try(new <- openalexR::oa_fetch(
-        identifier = data[[identifier_col]][i],
-        entity = "works"
-      ), silent = TRUE)
+      ans <- try(
+        openalexR::oa_fetch(
+          identifier = data[[identifier_col]][i],
+          entity = "works"
+        ),
+        silent = TRUE
+      )
     })
+    if (!inherits(ans, "try-error") && is.data.frame(ans)) {
+      new <- ans
+    }
     if (is.data.frame(new)) {
       res <- dplyr::bind_rows(res, new)
     }
