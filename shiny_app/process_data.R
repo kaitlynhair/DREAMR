@@ -142,14 +142,6 @@ pull_openalex <- function(data) {
   library(dplyr)
   library(tidyr)
   library(openalexR)
-  
-  # Local DOI normalizer to avoid external dependency on soles::format_doi
-  normalize_doi <- function(df, col = "doi") {
-    if (!col %in% names(df)) return(df)
-    df[[col]] <- tolower(df[[col]])
-    df[[col]] <- gsub("^https?://(dx\\.)?doi\\.org/", "", df[[col]])
-    df
-  }
 
   # Convert doi to lower case
   if ("doi" %in% colnames(data)) {
