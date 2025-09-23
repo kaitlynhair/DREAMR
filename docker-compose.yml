@@ -1,0 +1,24 @@
+services:
+  dreamr:
+    build: .
+    container_name: dreamr-shiny
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./shiny_app:/srv/shiny-server/dreamr
+    environment:
+      - SHINY_LOG_LEVEL=INFO
+    restart: unless-stopped
+
+  rstudio:
+    image: rocker/rstudio:latest
+    container_name: dreamr-rstudio
+    ports:
+      - "8787:8787"
+    environment:
+      - PASSWORD=${RSTUDIO_PASSWORD:-rstudio}
+      - DISABLE_AUTH=false
+    volumes:
+      - ./:/home/rstudio/projecdocket
+    working_dir: /home/rstudio/project
+    restart: unless-stopped

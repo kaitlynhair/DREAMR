@@ -1,4 +1,58 @@
-.Rproj.user
+# R / RStudio
+.Rproj.user/
 .Rhistory
+.Rapp.history
 .RData
 .Ruserdata
+.Rprofile.local
+.Renviron
+.Renviron.local
+
+# Shiny app caches and local artifacts
+shiny_app/app_cache/
+shiny_app/.Rhistory
+shiny_app/.RData
+rsconnect/
+.httr-oauth
+
+# Quarto/knitr caches and intermediates
+*_cache/
+_cache/
+*.utf8.md
+*.knit.md
+
+# bslib / sass caches
+.sass-cache/
+
+# Docker
+.env
+docker-compose.override.yml
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temp
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+
+# R dependency managers (if used later)
+packrat/lib*/
+packrat/src/
+renv/library/
+renv/staging/
+
+# Notebooks
+.ipynb_checkpoints/
