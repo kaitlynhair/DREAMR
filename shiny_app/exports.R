@@ -20,13 +20,22 @@ setup_download_handlers <- function(output, rv) {
       write.csv(rv$oa_data$authors,
                 file.path(tmpdir, "authors.csv"), row.names = FALSE)
 
+      # Generate and write summary table CSV
+      summary_df <- tryCatch({
+        generate_summary_table(rv$oa_data)
+      }, error = function(e) {
+        data.frame(Characteristic = character(0), Summary = character(0))
+      })
+      write.csv(summary_df, file.path(tmpdir, "summary_table.csv"), row.names = FALSE)
+
       # Create zip archive
       zip::zipr(
         zipfile = file,
         files = c(
           file.path(tmpdir, "pub_metadata.csv"),
           file.path(tmpdir, "institutions.csv"),
-          file.path(tmpdir, "authors.csv")
+          file.path(tmpdir, "authors.csv"),
+          file.path(tmpdir, "summary_table.csv")
         ),
         root = tmpdir
       )
