@@ -27,9 +27,9 @@ RUN R -e "install.packages(c(\
   'httr','zip'\
 ), repos='https://cloud.r-project.org')"
 
-# Install remotes and ASySD from GitHub (ASySD is not on CRAN)
-RUN R -e "if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes', repos='https://cloud.r-project.org'); \
-          if (!requireNamespace('ASySD', quietly=TRUE)) remotes::install_github('camarg/ASySD')"
+# Install devtools and ASySD from GitHub (ASySD is not on CRAN)
+RUN R -e "if (!requireNamespace('devtools', quietly=TRUE)) install.packages('devtools', repos='https://cloud.r-project.org'); \
+          if (!requireNamespace('ASySD', quietly=TRUE)) devtools::install_github('camaradesuk/ASySD')"
 
 # Copy app into Shiny Server apps dir (use compose volume for live dev)
 COPY shiny_app /srv/shiny-server/dreamr

@@ -19,6 +19,6 @@ services:
       - PASSWORD=${RSTUDIO_PASSWORD:-rstudio}
       - DISABLE_AUTH=false
     volumes:
-      - ./:/home/rstudio/project
+      - ./:/home/rstudio/projecdocket
     working_dir: /home/rstudio/project
     restart: unless-stopped
