@@ -153,7 +153,8 @@ pull_openalex <- function(data) {
 
   # Convert doi to lower case
   if ("doi" %in% colnames(data)) {
-    data <- normalize_doi(data, "doi")
+    data$doi <- tolower(data$doi)
+    data <- format_doi(data)
   }
 
   # Create empty results dataframe
@@ -364,11 +365,7 @@ extract_funder <- function(data) {
   # Step 4: Combine successful and failed funder data
   res_funder <- dplyr::bind_rows(res_funder, res_funder_failed)
 
-  # Normalize DOI format locally
-  if ("doi" %in% names(res_funder)) {
-    res_funder$doi <- tolower(res_funder$doi)
-    res_funder$doi <- gsub("^https?://(dx\\.)?doi\\.org/", "", res_funder$doi)
-  }
+  res_funder <- format_doi(res_funder)
   res_funder <- res_funder %>%
     filter(!funder_name =="Unknown") %>%
     group_by(id) %>%
