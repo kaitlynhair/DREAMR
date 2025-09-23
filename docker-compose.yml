@@ -1,6 +1,9 @@
 services:
   dreamr:
-    build: .
+    build:
+      context: .
+      args:
+        SHINY_ENV: ${SHINY_ENV:-prod}  # fallback to "prod" if undefined
     container_name: dreamr-shiny
     ports:
       - "3838:3838"
@@ -8,6 +11,7 @@ services:
       - ./shiny_app:/srv/shiny-server/dreamr
     environment:
       - SHINY_LOG_LEVEL=INFO
+      - SHINY_ENV=${SHINY_ENV:-prod}
     restart: unless-stopped
 
   rstudio:

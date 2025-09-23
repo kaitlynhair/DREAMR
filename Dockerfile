@@ -31,6 +31,13 @@ RUN R -e "install.packages(c(\
 RUN R -e "if (!requireNamespace('devtools', quietly=TRUE)) install.packages('devtools', repos='https://cloud.r-project.org'); \
           if (!requireNamespace('ASySD', quietly=TRUE)) devtools::install_github('camaradesuk/ASySD')"
 
+# Use SHINY_ENV as build-time argument
+ARG SHINY_ENV=prod
+ENV SHINY_ENV=${SHINY_ENV}
+RUN if [ "$SHINY_ENV" = "dev" ]; then \
+    R -e "install.packages(c('digest'))"; \
+  fi
+  
 # Copy app into Shiny Server apps dir (use compose volume for live dev)
 COPY shiny_app /srv/shiny-server/dreamr
 
