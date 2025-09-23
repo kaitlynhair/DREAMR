@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  dreamr:
+    build: .
+    container_name: dreamr-shiny
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./shiny_app:/srv/shiny-server/dreamr
+    environment:
+      - SHINY_LOG_LEVEL=INFO
+    restart: unless-stopped
