@@ -176,6 +176,7 @@ load_studies <-function(paths, names, method){
     }
 
     if(method == "csv"){
+      
 
       cols <- c("label","isbn", "source")
       newdat <- read.csv(path)
@@ -187,14 +188,25 @@ load_studies <-function(paths, names, method){
   }
 
   # make sure year is character in all
-  for (i in 1:length(df_list)) {
-    df_list[[i]]$year <- as.character(df_list[[i]]$year)
-  }
+  
+    for (i in 1:length(df_list)) {
+      
+      # only run if col year exists
+      if("year" %in% colnames(df_list[[i]])) {
+        df_list[[i]]$year <- as.character(df_list[[i]]$year)
+      }
+      
+    }
+  
 
   newdat <- dplyr::bind_rows(df_list)
 
   cols_to_modify <-  c('title', 'year', 'journal', 'abstract', 'doi', "pmid", "pmcid",'number', 'pages', 'volume', 'isbn', 'record_id', 'label', 'source', 'url')
-  newdat[cols_to_modify] <- lapply(newdat[cols_to_modify], function(x) gsub("\\r\\n|\\r|\\n", "", x))
+  
+  # limit formatting to target columns that exist in input csv
+  actual_cols <- colnames(select(newdat, any_of(cols_to_modify)))
+  
+  newdat[actual_cols] <- lapply(newdat[actual_cols], function(x) gsub("\\r\\n|\\r|\\n", "", x))
 
   return(newdat)
 

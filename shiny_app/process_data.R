@@ -169,16 +169,20 @@ pull_openalex <- function(data) {
   if ("doi" %in% colnames(data)) {
     data <- data %>% filter(!doi %in% oa_results$doi)
   }
-
+  
   # Filter records with pmid and fetch
-  if ("pmid" %in% colnames(data) & nrow(filter(data, !is.na(pmid))) > 0) {
-    data_pmid <- data %>% filter(!is.na(pmid)) %>%
-      mutate(identifier = paste0("pmid:", pmid))
-    oa_result <- oa_metadata(data_pmid, identifier = "pmid")
-    if (!"ab" %in% colnames(oa_result)) {
-      oa_result <- oa_result %>% mutate(ab = NA)
+  if ("pmid" %in% colnames(data)) {
+    if(nrow(filter(data, !is.na(pmid))) > 0) {
+      
+      data_pmid <- data %>% filter(!is.na(pmid)) %>%
+        mutate(identifier = paste0("pmid:", pmid))
+      oa_result <- oa_metadata(data_pmid, identifier = "pmid")
+      if (!"ab" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(ab = NA)
+      }
+      oa_results <- rbind(oa_result, oa_results)
+      
     }
-    oa_results <- rbind(oa_result, oa_results)
   }
 
   # Remove found from data
@@ -189,15 +193,20 @@ pull_openalex <- function(data) {
   }
 
   # Filter records with pmcid and fetch
-  if ("pmcid" %in% colnames(data) & nrow(filter(data, !is.na(pmcid))) > 0) {
-    data_pmcid <- data %>% filter(!is.na(pmcid)) %>%
-      mutate(identifier = paste0("pmcid:", pmcid))
-    oa_result <- oa_metadata(data_pmcid, identifier = "pmcid")
-    if (!"ab" %in% colnames(oa_result)) {
-      oa_result <- oa_result %>% mutate(ab = NA)
+  if ("pmcid" %in% colnames(data)) {
+    
+    if(nrow(filter(data, !is.na(pmcid))) > 0) {
+      data_pmcid <- data %>% filter(!is.na(pmcid)) %>%
+        mutate(identifier = paste0("pmcid:", pmcid))
+      oa_result <- oa_metadata(data_pmcid, identifier = "pmcid")
+      if (!"ab" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(ab = NA)
+      }
+      oa_results <- rbind(oa_result, oa_results)
+      
     }
-    oa_results <- rbind(oa_result, oa_results)
   }
+  
   return(unique(oa_results))
 }
 
