@@ -28,6 +28,7 @@ source("process_data.R")
 source("summary_table.R")
 source("load_studies.R")
 source("get_first_active_year.R")
+source("exports.R")
 
 # To use development build, set to TRUE
 is_dev_build <- FALSE
@@ -233,8 +234,9 @@ server <- function(input, output) {
 
 # Output --- summary table
   output$summary_table <- renderDT({
-    # Generate summary tibble
-    summary_df <- generate_summary_table(rv$oa_data)
+    # Generate summary tibble, including proportion found on OpenAlex
+    total_citations <- if (!is.null(rv$refdata)) nrow(rv$refdata) else NA_integer_
+    summary_df <- generate_summary_table(rv$oa_data, total_citations = total_citations)
 
     datatable(
       summary_df,
@@ -249,38 +251,7 @@ server <- function(input, output) {
   })
 
   # Output: Download multiple files ----
-  output$download_all <- downloadHandler(
-    filename = function() {
-      paste0("openalex_results_", Sys.Date(), ".zip")
-    },
-    content = function(file) {
-      req(rv$oa_data)
-
-      # Create a temporary directory
-      tmpdir <- tempdir()
-
-      # Suppose rv$oa_data is a list with elements: pub_metadata, institutions, authors
-      # Write each one as CSV
-      write.csv(rv$oa_data$pub_metadata,
-                file.path(tmpdir, "pub_metadata.csv"), row.names = FALSE)
-      write.csv(rv$oa_data$institutions,
-                file.path(tmpdir, "institutions.csv"), row.names = FALSE)
-      write.csv(rv$oa_data$authors,
-                file.path(tmpdir, "authors.csv"), row.names = FALSE)
-
-      # Create zip archive
-      zip::zipr(
-        zipfile = file,
-        files = c(
-          file.path(tmpdir, "pub_metadata.csv"),
-          file.path(tmpdir, "institutions.csv"),
-          file.path(tmpdir, "authors.csv")
-        ),
-        root = tmpdir
-      )
-    },
-    contentType = "application/zip"
-  )
+  setup_download_handlers(output, rv)
 }
 
 # Run the Application ==========================================================

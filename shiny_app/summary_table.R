@@ -81,11 +81,19 @@ summarise_years_since_first_pub <- function(authors_df, role, var) {
 #'   - `institutions`: Data frame with institution-level data including `paper_id`, `affiliation_id`, `country_code`, `type`, and `role`.
 #' @return A tibble with two columns: `Characteristic` and `Summary`, suitable for tables or Shiny display.
 #' @examples
-#' summary_df <- generate_summary_table(oa_results)
+#' summary_df <- generate_summary_table(oa_results, total_citations = 120)
 #' @export
-generate_summary_table <- function(oa_results) {
+generate_summary_table <- function(oa_results, total_citations = NULL) {
 
-  summary_table <- list(
+  # Optional overall retrieval summary
+  found_n <- if (!is.null(oa_results$pub_metadata)) nrow(oa_results$pub_metadata) else 0
+  found_row <- NULL
+  if (!is.null(total_citations) && is.finite(total_citations) && total_citations > 0) {
+    pct_found <- round(100 * found_n / total_citations, 1)
+    found_row <- list("Found on OpenAlex" = paste0(found_n, "/", total_citations, " (", pct_found, "%)"))
+  }
+
+  summary_table <- c(found_row, list(
     "Open access" = summarise_logical(oa_results$pub_metadata$is_oa),
     "Publication language" = summarise_categorical(oa_results$pub_metadata$language),
     "Publication year" = summarise_var(oa_results$pub_metadata$publication_year),
@@ -106,7 +114,7 @@ generate_summary_table <- function(oa_results) {
     "Type of institutions (all)" = summarise_author_role(oa_results$institutions,  role = c("first", "last", "middle"), var = type),
     "Type of institutions (first)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
     "Type of institutions (last)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
-  )
+  ))
 
   # Convert list into tidy data frame
   summary_df <- tibble::enframe(summary_table, name = "Characteristic", value = "Summary") %>%
