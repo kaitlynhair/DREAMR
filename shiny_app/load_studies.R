@@ -1,3 +1,27 @@
+format_doi <- function (df) {
+  df$doi <- tolower(df$doi)
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("%28",
+                                                                "(", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("%29",
+                                                                ")", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("http://dx.doi.org/",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("https://doi.org/",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("https://dx.doi.org/",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("http://doi.org/",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("doi: ",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("doi:",
+                                                                "", x)))
+  df["doi"] <- as.data.frame(sapply(df["doi"], function(x) gsub("doi",
+                                                                "", x)))
+  return(df)
+}
+
+
 #' Load in citations
 #'
 #' This function loads in a citation file within the shiny app
