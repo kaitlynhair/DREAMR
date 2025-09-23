@@ -27,12 +27,9 @@ RUN R -e "install.packages(c(\
   'httr','zip'\
 ), repos='https://cloud.r-project.org')"
 
-# Try to install ASySD and openalexR from CRAN; fall back to GitHub if missing
+# Install remotes and ASySD from GitHub (ASySD is not on CRAN)
 RUN R -e "if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes', repos='https://cloud.r-project.org'); \
-          if (!requireNamespace('ASySD', quietly=TRUE)) { \
-            try(install.packages('ASySD', repos='https://cloud.r-project.org'), silent=TRUE); \
-            if (!requireNamespace('ASySD', quietly=TRUE)) remotes::install_github('r-lib/ASySD'); \
-          }"
+          if (!requireNamespace('ASySD', quietly=TRUE)) remotes::install_github('camarg/ASySD')"
 
 # Copy app into Shiny Server apps dir (use compose volume for live dev)
 COPY shiny_app /srv/shiny-server/dreamr

@@ -31,3 +31,14 @@ docker compose up --build
 ```powershell
 docker compose down
 ```
+
+### RStudio in Docker (optional)
+
+- Start RStudio (launched together with compose): http://localhost:8787
+- Login: username `rstudio`, password `rstudio` (or set `RSTUDIO_PASSWORD` env var)
+- Project files are available at `/home/rstudio/project` (the repo root). You can run or debug the app with:
+
+```r
+setwd("/home/rstudio/project/shiny_app")
+shiny::runApp()
+```
