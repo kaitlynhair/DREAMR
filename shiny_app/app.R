@@ -223,8 +223,9 @@ server <- function(input, output) {
 
 # Output --- summary table
   output$summary_table <- renderDT({
-    # Generate summary tibble
-    summary_df <- generate_summary_table(rv$oa_data)
+    # Generate summary tibble, including proportion found on OpenAlex
+    total_citations <- if (!is.null(rv$refdata)) nrow(rv$refdata) else NA_integer_
+    summary_df <- generate_summary_table(rv$oa_data, total_citations = total_citations)
 
     datatable(
       summary_df,

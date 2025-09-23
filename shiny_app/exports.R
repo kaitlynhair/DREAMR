@@ -22,7 +22,8 @@ setup_download_handlers <- function(output, rv) {
 
       # Generate and write summary table CSV
       summary_df <- tryCatch({
-        generate_summary_table(rv$oa_data)
+        total_citations <- if (!is.null(rv$refdata)) nrow(rv$refdata) else NA_integer_
+        generate_summary_table(rv$oa_data, total_citations = total_citations)
       }, error = function(e) {
         data.frame(Characteristic = character(0), Summary = character(0))
       })
