@@ -22,6 +22,7 @@ require(shinythemes)
 require(shinyWidgets)
 require(stringr)
 require(XML)
+require(openxlsx)
 
 # Source functions
 source("process_data.R")
@@ -68,9 +69,13 @@ ui <- fluidPage(
         inputId = "fileType",
         label = "Select file type:",
         inline = FALSE,
-        choices = c("Endnote Export (XML)", "Zotero Export (CSV)",
-                    "Comma Separated Value (CSV)", "Tab Delimited (TXT)",
-                    "Bibliographic (BIB)", "Research Information Systems (RIS)"),
+        choices = c("Endnote Export (XML)",
+                    # "Zotero Export (CSV)",
+                    "Comma Separated Value (CSV)", 
+                    # "Tab Delimited (TXT)",
+                    # "Bibliographic (BIB)", 
+                    # "Research Information Systems (RIS)",
+                    "Excel spreadsheet (XLSX)"),
         status = "primary"),
       br(),
 
@@ -142,10 +147,11 @@ server <- function(input, output) {
       # Load citations based on file type
       method <- switch(input$fileType,
                        "Endnote Export (XML)" = "endnote",
-                       "Zotero Export (CSV)" = "zotero_csv",
+                       # "Zotero Export (CSV)" = "zotero_csv",
                        "Comma Separated Value (CSV)" = "csv",
-                       "Research Information Systems (RIS)" = "ris",
-                       "Bibliographic (BIB)" = "bib",
+                       # "Research Information Systems (RIS)" = "ris",
+                       # "Bibliographic (BIB)" = "bib",
+                       "Excel spreadsheet (XLSX)" = "xlsx",
                        stop("Unknown file type"))
 
       citations <- load_studies(input$uploadfile$datapath,
