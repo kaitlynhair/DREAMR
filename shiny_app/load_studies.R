@@ -45,119 +45,119 @@ load_studies <-function(paths, names, method){
     path <- paths[i]
     name <- names[i]
 
-    if(method == "bib"){
+    # if(method == "bib"){
+    # 
+    #   # try wos format
+    #   suppressMessages(suppressWarnings(try(newdat <- bibliometrix::convert2df(path, dbsource = "wos", format="bibtex"), silent=TRUE)))
+    # 
+    #   if(exists("newdat")){
+    # 
+    #     # Create a lookup table to map Field to Abbreviation
+    #     lookup_table <- stats::setNames(field_codes_wos$Field, field_codes_wos$Abbreviation)
+    # 
+    #     # Rename the columns in df_original using the lookup_table
+    #     colnames(newdat) <- lookup_table[colnames(newdat)]
+    # 
+    #     # Remove columns
+    #     keep.cols <- names(newdat) %in% NA
+    #     newdat <- newdat [! keep.cols]
+    #     rownames(newdat) <- 1:nrow(newdat)
+    # 
+    #   }
+    #   if(!exists("newdat")){
+    # 
+    #     # try pubmed format
+    #     suppressMessages(suppressWarnings(try(newdat <- bibliometrix::convert2df(path, dbsource = "pubmed", format = "pubmed"), silent=TRUE)))
+    # 
+    #     if(exists("newdat")){
+    # 
+    #       # Create a lookup table to map Field to Abbreviation
+    #       lookup_table <- setNames(field_codes_pubmed$Field, field_codes_pubmed$Abbreviation)
+    # 
+    #       # Rename the columns in df_original using the lookup_table
+    #       colnames(newdat) <- lookup_table[colnames(newdat)]
+    # 
+    #       # Remove columns
+    #       keep.cols <- names(newdat) %in% NA
+    #       newdat <- newdat [! keep.cols]
+    #       rownames(newdat) <- 1:nrow(newdat)
+    # 
+    #       # additional formatting for issn - keeping only ISSN vs other identifiers
+    #       newdat$isbn <- trimws(stringr::str_extract(newdat$issn, ".{4}-.{4}.(?=\\((ELECTRONIC|PRINT\\)))"))
+    #     }
+    #   }
+    # 
+    #   if(!exists("newdat")){
+    # 
+    #     try(newdat <- RefManageR::ReadBib(path, check =FALSE))
+    # 
+    #   }
+    # 
+    #   newdat <- as.data.frame(newdat)
+    # 
+    #   cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+    #   newdat[cols[!(cols %in% colnames(newdat))]] = NA
+    # 
+    #   newdat$pages <- lapply(newdat$pages, function(x) gsub("--", "-", x))
+    # 
+    #   newdat$file_name <- name
+    #   df_list[[i]] <- newdat
+    # 
+    # 
+    #   remove(newdat)
+    # 
+    # }
 
-      # try wos format
-      suppressMessages(suppressWarnings(try(newdat <- bibliometrix::convert2df(path, dbsource = "wos", format="bibtex"), silent=TRUE)))
+    # if(method == "zotero_csv"){
+    # 
+    #   newdat <- utils::read.csv(path)
+    #   newdat <- newdat %>%
+    #     dplyr::rename(record_id = Key,
+    #                   year = Publication.Year,
+    #                   journal = Publication.Title,
+    #                   keywords = Manual.Tags )
+    # 
+    #   names(newdat) <- tolower(names(newdat))
+    # 
+    #   cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+    #   newdat[cols[!(cols %in% colnames(newdat))]] = NA
+    # 
+    # 
+    #   newdat$file_name <- name
+    #   df_list[[i]] <- newdat
+    # }
 
-      if(exists("newdat")){
-
-        # Create a lookup table to map Field to Abbreviation
-        lookup_table <- stats::setNames(field_codes_wos$Field, field_codes_wos$Abbreviation)
-
-        # Rename the columns in df_original using the lookup_table
-        colnames(newdat) <- lookup_table[colnames(newdat)]
-
-        # Remove columns
-        keep.cols <- names(newdat) %in% NA
-        newdat <- newdat [! keep.cols]
-        rownames(newdat) <- 1:nrow(newdat)
-
-      }
-      if(!exists("newdat")){
-
-        # try pubmed format
-        suppressMessages(suppressWarnings(try(newdat <- bibliometrix::convert2df(path, dbsource = "pubmed", format = "pubmed"), silent=TRUE)))
-
-        if(exists("newdat")){
-
-          # Create a lookup table to map Field to Abbreviation
-          lookup_table <- setNames(field_codes_pubmed$Field, field_codes_pubmed$Abbreviation)
-
-          # Rename the columns in df_original using the lookup_table
-          colnames(newdat) <- lookup_table[colnames(newdat)]
-
-          # Remove columns
-          keep.cols <- names(newdat) %in% NA
-          newdat <- newdat [! keep.cols]
-          rownames(newdat) <- 1:nrow(newdat)
-
-          # additional formatting for issn - keeping only ISSN vs other identifiers
-          newdat$isbn <- trimws(stringr::str_extract(newdat$issn, ".{4}-.{4}.(?=\\((ELECTRONIC|PRINT\\)))"))
-        }
-      }
-
-      if(!exists("newdat")){
-
-        try(newdat <- RefManageR::ReadBib(path, check =FALSE))
-
-      }
-
-      newdat <- as.data.frame(newdat)
-
-      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
-      newdat[cols[!(cols %in% colnames(newdat))]] = NA
-
-      newdat$pages <- lapply(newdat$pages, function(x) gsub("--", "-", x))
-
-      newdat$file_name <- name
-      df_list[[i]] <- newdat
-
-
-      remove(newdat)
-
-    }
-
-    if(method == "zotero_csv"){
-
-      newdat <- utils::read.csv(path)
-      newdat <- newdat %>%
-        dplyr::rename(record_id = Key,
-                      year = Publication.Year,
-                      journal = Publication.Title,
-                      keywords = Manual.Tags )
-
-      names(newdat) <- tolower(names(newdat))
-
-      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
-      newdat[cols[!(cols %in% colnames(newdat))]] = NA
-
-
-      newdat$file_name <- name
-      df_list[[i]] <- newdat
-    }
-
-    if(method == "ris"){
-
-      newdat <- synthesisr::read_refs(path)
-
-      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
-      newdat[cols[!(cols %in% colnames(newdat))]] = NA
-
-      # rename or coalesce columns
-      targets <- c("journal", "number", "pages", "isbn", "record_id", "booktitle")
-      sources <- c("source", "issue", "start_page", "issn", "ID", "title")
-
-      for (j in seq_along(targets)) {
-        if (targets[j] %in% names(newdat)) {
-          newdat[[targets[j]]] <- dplyr::coalesce(newdat[[targets[j]]], newdat[[sources[j]]])
-        }  else {
-          newdat[[targets[j]]] <- newdat[[sources[j]]]
-        }}
-
-
-      if ("end_page" %in% colnames(newdat)) {
-        newdat <- newdat %>%
-          dplyr::mutate(pages = .data$pages, "-", .data$end_page) %>%
-          dplyr::select(-end_page)
-      }
-
-      newdat$pages <- lapply(newdat$pages, function(x) gsub("--", "-", x))
-
-
-      newdat$file_name <- name
-      df_list[[i]] <- newdat
-    }
+    # if(method == "ris"){
+    # 
+    #   newdat <- synthesisr::read_refs(path)
+    # 
+    #   cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+    #   newdat[cols[!(cols %in% colnames(newdat))]] = NA
+    # 
+    #   # rename or coalesce columns
+    #   targets <- c("journal", "number", "pages", "isbn", "record_id", "booktitle")
+    #   sources <- c("source", "issue", "start_page", "issn", "ID", "title")
+    # 
+    #   for (j in seq_along(targets)) {
+    #     if (targets[j] %in% names(newdat)) {
+    #       newdat[[targets[j]]] <- dplyr::coalesce(newdat[[targets[j]]], newdat[[sources[j]]])
+    #     }  else {
+    #       newdat[[targets[j]]] <- newdat[[sources[j]]]
+    #     }}
+    # 
+    # 
+    #   if ("end_page" %in% colnames(newdat)) {
+    #     newdat <- newdat %>%
+    #       dplyr::mutate(pages = .data$pages, "-", .data$end_page) %>%
+    #       dplyr::select(-end_page)
+    #   }
+    # 
+    #   newdat$pages <- lapply(newdat$pages, function(x) gsub("--", "-", x))
+    # 
+    # 
+    #   newdat$file_name <- name
+    #   df_list[[i]] <- newdat
+    # }
 
     if(method == "endnote"){
 
@@ -201,14 +201,89 @@ load_studies <-function(paths, names, method){
 
     if(method == "csv"){
       
-
-      cols <- c("label","isbn", "source")
-      newdat <- read.csv(path)
+      newdat <- utils::read.csv(path)
+      
+      # zotero-specific cols
+      if(all(c("Key","Publication.Year","Publication.Title","Manual.Tags") %in% colnames(newdat))) {
+        
+        newdat <- newdat %>%
+          dplyr::rename(record_id = Key,
+                        year = Publication.Year,
+                        journal = Publication.Title,
+                        keywords = Manual.Tags )
+      }
+      
+      # syrf-specific cols
+      if(all(c("StudyId","PublicationName","CustomId") %in% colnames(newdat))) {
+        
+        newdat <- newdat %>%
+          dplyr::rename(record_id = StudyId,
+                        journal = PublicationName)
+      }
+      
+      # pubmed-specific cols
+      if(all(c("PMID","Publication.Year","Journal.Book") %in% colnames(newdat))) {
+        
+        newdat <- newdat %>%
+          dplyr::rename(year = Publication.Year,
+                        journal = Journal.Book)
+      }
+      
+      
+      names(newdat) <- tolower(names(newdat))
+      
+      if("authors" %in% colnames(newdat)) {
+        newdat <- newdat %>% rename(author = authors) 
+      }
+      
+      
+      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+      names(newdat) <- tolower(names(newdat))
+      
+      if("authors" %in% colnames(newdat)) {
+        newdat <- newdat %>% rename(author = authors) 
+      }
+      
+      if("key" %in% colnames(newdat)) {
+        newdat <- newdat %>% rename(record_id = key) 
+      }
+      
+      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+      
       newdat[cols[!(cols %in% colnames(newdat))]] = NA
-
+      
       newdat$file_name <- name
+      
+      df_list[[i]] <- newdat
+      newdat[cols[!(cols %in% colnames(newdat))]] = NA
+      
+      newdat$file_name <- name
+      
+      df_list[[i]] <- newdat
+      
+      
+    }
+    
+    if(method == "xlsx"){
+
+      newdat <- openxlsx::read.xlsx(path, fillMergedCells = TRUE, skipEmptyRows = T, skipEmptyCols = T)
+      
+      names(newdat) <- tolower(names(newdat))
+      
+      if("authors" %in% colnames(newdat)) {
+        newdat <- newdat %>% rename(author = authors) 
+      }
+      
+      
+      cols <- c("author", "year", "journal", "doi", "pmid", "pmcid", "title", "pages", "volume", "number", "abstract", "record_id", "isbn", "label", "source", "url")
+      
+      newdat[cols[!(cols %in% colnames(newdat))]] = NA
+      
+      newdat$file_name <- name
+      
       df_list[[i]] <- newdat
     }
+    
   }
 
   # make sure year is character in all
@@ -225,12 +300,12 @@ load_studies <-function(paths, names, method){
 
   newdat <- dplyr::bind_rows(df_list)
 
-  cols_to_modify <-  c('title', 'year', 'journal', 'abstract', 'doi', "pmid", "pmcid",'number', 'pages', 'volume', 'isbn', 'record_id', 'label', 'source', 'url')
+  cols_to_modify <-  c('author','title', 'year', 'journal', 'abstract', 'doi', "pmid", "pmcid",'number', 'pages', 'volume', 'isbn', 'record_id', 'label', 'source', 'url')
   
   # limit formatting to target columns that exist in input csv
-  actual_cols <- colnames(select(newdat, any_of(cols_to_modify)))
+  # actual_cols <- colnames(select(newdat, any_of(cols_to_modify)))
   
-  newdat[actual_cols] <- lapply(newdat[actual_cols], function(x) gsub("\\r\\n|\\r|\\n", "", x))
+  newdat[cols_to_modify] <- lapply(newdat[cols_to_modify], function(x) gsub("\\r\\n|\\r|\\n", "", x))
 
   return(newdat)
 
