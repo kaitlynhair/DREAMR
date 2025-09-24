@@ -74,7 +74,7 @@ dreamr_extract <- function(data) {
     select(-display_name) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
-    select(openalex_id, id, publication_year, author_position, orcid) %>%
+    select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
     mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
     rowwise() %>%
     mutate(first_active_year = get_first_active_year(orcid)) %>%
@@ -289,13 +289,13 @@ global_south_country_codes <- c(
 #' institution_data <- extract_institution(data, author_position = "first")
 #' }
 extract_institution <- function(data) {
-
   # Extract institution information for the specified author position
   res_institution <- data %>%
    select(-display_name, -type) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     dplyr::select(
+      author_name = display_name,
       openalex_id,
       doi,
       author_id = id,
