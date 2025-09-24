@@ -31,6 +31,7 @@ docker-compose.override.yml
 # Editors / IDEs
 .vscode/
 .idea/
+.devcontainer
 
 # OS-specific
 .DS_Store
@@ -57,4 +58,5 @@ renv/staging/
 # Notebooks
 .ipynb_checkpoints/
 
+# API cache
 */.cache
