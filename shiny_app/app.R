@@ -23,6 +23,7 @@ require(shinyWidgets)
 require(stringr)
 require(XML)
 require(openxlsx)
+require(gender)
 
 # Source functions
 source("process_data.R")

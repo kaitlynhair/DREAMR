@@ -76,6 +76,7 @@ dreamr_extract <- function(data) {
     tidyr::unnest(authorships) %>%
     select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
     mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
+    mutate( first_name = stringr::word(display_name, 1)) %>%
     rowwise() %>%
     mutate(first_active_year = get_first_active_year(orcid)) %>%
     ungroup() %>%
@@ -86,6 +87,13 @@ dreamr_extract <- function(data) {
     ) %>%
     rename(author_id = id) %>%
     mutate(source = "OpenAlex API")
+  
+  # Add gender data
+  unique_first_names <- unique(authors$first_name)
+  gender_data <- gender(unique_first_names, method = "genderize") %>%
+    select(name, gender)  # Keep only name and gender
+  authors <- authors %>%
+    left_join(gender_data, by = c("first_name" = "name"))
 
   # Prepare publication-level metadata
   pub_metadata <- oa_results %>%
