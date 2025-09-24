@@ -75,6 +75,7 @@ dreamr_extract <- function(data) {
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     select(openalex_id, id, publication_year, author_position, orcid) %>%
+    distinct %>%
     mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
     rowwise() %>%
     mutate(first_active_year = get_first_active_year(orcid)) %>%
@@ -188,8 +189,8 @@ pull_openalex <- function(data) {
     oa_result <- oa_metadata(data_doi, identifier = "doi")
 
     # If no abstract, make it NA
-    if (!"ab" %in% colnames(oa_result)) {
-      oa_result <- oa_result %>% mutate(ab = NA)
+    if (!"abstract" %in% colnames(oa_result)) {
+      oa_result <- oa_result %>% mutate(abstract = NA)
     }
     oa_results <- rbind(oa_result, oa_results)
   }
@@ -206,8 +207,8 @@ pull_openalex <- function(data) {
       data_pmid <- data %>% filter(!is.na(pmid)) %>%
         mutate(identifier = paste0("pmid:", pmid))
       oa_result <- oa_metadata(data_pmid, identifier = "pmid")
-      if (!"ab" %in% colnames(oa_result)) {
-        oa_result <- oa_result %>% mutate(ab = NA)
+      if (!"abstract" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(abstract = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
       
@@ -228,8 +229,11 @@ pull_openalex <- function(data) {
       data_pmcid <- data %>% filter(!is.na(pmcid)) %>%
         mutate(identifier = paste0("pmcid:", pmcid))
       oa_result <- oa_metadata(data_pmcid, identifier = "pmcid")
-      if (!"ab" %in% colnames(oa_result)) {
-        oa_result <- oa_result %>% mutate(ab = NA)
+      if (!"abstract" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(abstract = NA)
+      }
+      if (!"license" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(license = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
       
@@ -639,7 +643,6 @@ oa_retrieval_summary <- function(refdata, oa_list) {
 #' }
 oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
   res <- NULL
-
 
   identifier_col <- "identifier"
 
