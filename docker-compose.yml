@@ -1,14 +1,18 @@
+volumes:
+  r_libs_shared:  # shared R package library volume
+
 services:
   dreamr:
     build:
       context: .
       args:
-        SHINY_ENV: ${SHINY_ENV:-prod}  # fallback to "prod" if undefined
+        SHINY_ENV: ${SHINY_ENV:-prod}
     container_name: dreamr-shiny
     ports:
       - "3838:3838"
     volumes:
       - ./shiny_app:/srv/shiny-server/dreamr
+      - r_libs_shared:/usr/local/lib/R/site-library
     environment:
       - SHINY_LOG_LEVEL=INFO
       - SHINY_ENV=${SHINY_ENV:-prod}
@@ -23,6 +27,7 @@ services:
       - PASSWORD=${RSTUDIO_PASSWORD:-rstudio}
       - DISABLE_AUTH=false
     volumes:
-      - ./:/home/rstudio/projecdocket
+      - ./:/home/rstudio/project
+      - r_libs_shared:/usr/local/lib/R/site-library
     working_dir: /home/rstudio/project
     restart: unless-stopped
