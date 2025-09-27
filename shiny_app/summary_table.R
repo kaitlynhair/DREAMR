@@ -98,7 +98,7 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {
     "Publication language" = summarise_categorical(oa_results$pub_metadata$language),
     "Publication year" = summarise_var(oa_results$pub_metadata$publication_year),
     "Number of journals" = as.character(length(unique(oa_results$pub_metadata$source_display_name))),
-    "Field of research" = summarise_categorical(oa_results$pub_metadata$source_display_name),
+    "Field of research" = summarise_categorical(oa_results$pub_metadata$domain),
     "Article type" = summarise_categorical(oa_results$pub_metadata$type),
     "Funding source specified" =  summarise_categorical(oa_results$pub_metadata$funder_name),
     "Number of authors per paper" = summarise_n_per_paper(oa_results$authors, paper_id_col = "openalex_id", inst_col = "author_id"),
