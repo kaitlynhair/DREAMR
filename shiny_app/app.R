@@ -110,6 +110,7 @@ ui <- fluidPage(
 
         tabPanel("Summary table",
                  br(),
+                 uiOutput("summary_status"),
                  h4("Data completeness"),
                  fluidRow(
                    column(4,
@@ -127,15 +128,16 @@ ui <- fluidPage(
                  ),
                  br(),
                  h4("Summary Table"),
-                 DTOutput("summary_table")
+                  DTOutput("summary_table") %>% withSpinner(color="#00695C", type=7)
         ),
-        
 
        tabPanel("Downloads",
                 br(),
                 h4("Download Data"),
-                downloadButton("download_raw_table", "Download Raw Table as CSV")
-                )
+                uiOutput("download_ready"),
+                br(),
+                uiOutput("download_button_raw")
+        )
       )
     )
   )
@@ -197,15 +199,22 @@ server <- function(input, output) {
 
     shiny::validate(need(rv$refdata, "No reference data available"))
 
-    # Extract OpenAlex data
-    if (is_dev_build) 
-      oa_data <- dreamr_extract_cached(rv$refdata)
-    else
-      oa_data <- dreamr_extract(rv$refdata)
+    rv$loading <- TRUE
+    # Progress feedback
+    withProgress(message = "Retrieving & processing metadata", value = 0, {
+      progress_fun <- function(detail, amount) {
+        incProgress(amount, detail = detail)
+      }
+      if (is_dev_build) 
+        oa_data <- dreamr_extract_cached(rv$refdata, progress = progress_fun)
+      else
+        oa_data <- dreamr_extract(rv$refdata, progress = progress_fun)
+    })
 
     rv$authors <- oa_data$authors
     rv$institutions <- oa_data$institutions
     rv$oa_data <- oa_data
+    rv$loading <- FALSE
   })
 
 
@@ -259,20 +268,52 @@ server <- function(input, output) {
 
 # Output --- summary table
   output$summary_table <- renderDT({
-    # Generate summary tibble, including proportion found on OpenAlex
+    shiny::validate(shiny::need(!is.null(rv$oa_data), "Summary not ready yet"))
     total_citations <- if (!is.null(rv$refdata)) nrow(rv$refdata) else NA_integer_
     summary_df <- generate_summary_table(rv$oa_data, total_citations = total_citations)
-
     datatable(
       summary_df,
       rownames = FALSE,
       options = list(
         pageLength = 20,
         scrollX = TRUE,
-        dom = 't',                # show only table, no search/paging
+        dom = 't',
         columnDefs = list(list(className = 'dt-center', targets = "_all"))
       )
     )
+  })
+
+  # Summary status indicator
+  output$summary_status <- renderUI({
+    if (isTRUE(rv$loading)) {
+      span(icon("spinner", class = "fa-spin"), " Building summary table...", class = "text-warning")
+    } else if (!is.null(rv$oa_data)) {
+      span(icon("check-circle"), " Summary table ready", class = "text-success fw-bold")
+    } else {
+      span(icon("hourglass-half"), " Waiting for metadata...", class = "text-muted")
+    }
+  })
+
+  # Download readiness indicator
+  output$download_ready <- renderUI({
+    if (isTRUE(rv$loading)) {
+      span(icon("spinner", class = "fa-spin"), " Preparing data exports...", class = "text-warning")
+    } else if (!is.null(rv$oa_data)) {
+      span(icon("check-circle"), " Exports ready (raw + summary)", class = "text-success fw-bold")
+    } else {
+      span(icon("hourglass-half"), " Upload and process data to enable downloads", class = "text-muted")
+    }
+  })
+
+  # Raw download button (disabled while loading / not ready)
+  output$download_button_raw <- renderUI({
+    disabled <- isTRUE(rv$loading) || is.null(rv$oa_data)
+    btn <- downloadButton("download_raw_table", "Download Raw Table as CSV")
+    if (disabled) {
+      btn$children[[1]]$attribs$disabled <- "disabled"
+      btn$children[[1]]$attribs$class <- paste(btn$children[[1]]$attribs$class, "disabled")
+    }
+    btn
   })
 
   # Output: Download multiple files ----
