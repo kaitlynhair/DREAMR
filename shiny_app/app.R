@@ -30,9 +30,10 @@ source("summary_table.R")
 source("load_studies.R")
 source("get_first_active_year.R")
 source("exports.R")
+source("flowchart.R")
 
 # To use development build, set to TRUE
-is_dev_build <- FALSE
+is_dev_build <- TRUE
 # TO DO: use environment variable to avoid committing dev build to GitHub
 # is_dev_build <- Sys.getenv("SHINY_ENV", unset = "prod") == "dev"  # doesn't work?
 if (is_dev_build) {
@@ -107,12 +108,28 @@ ui <- fluidPage(
                  # )
         ),
 
-  tabPanel("Summary table",
-     br(),
-     uiOutput("summary_status"),
-     br(),
-     DTOutput("summary_table") %>% withSpinner(color="#00695C", type=7)
-  ),
+        tabPanel("Summary table",
+                 br(),
+                 uiOutput("summary_status"),
+                 h4("Data completeness"),
+                 fluidRow(
+                   column(4,
+                          h5("References"),
+                          grVizOutput("flow_references", height = "300px")
+                   ),
+                   column(4,
+                          h5("Institutions"),
+                          grVizOutput("flow_institutions", height = "300px")
+                   ),
+                   column(4,
+                          h5("Authors"),
+                          grVizOutput("flow_authors", height = "300px")
+                   )
+                 ),
+                 br(),
+                 h4("Summary Table"),
+                  DTOutput("summary_table") %>% withSpinner(color="#00695C", type=7)
+        ),
 
        tabPanel("Downloads",
                 br(),
@@ -301,7 +318,14 @@ server <- function(input, output) {
 
   # Output: Download multiple files ----
   setup_download_handlers(output, rv)
+  
+  # --- Helpers for flowchart ---
+  
+  output$flow_references <- renderGrViz({ render_flow_references(rv) })
+  output$flow_institutions <- renderGrViz({ render_flow_institutions(rv) })
+  output$flow_authors <- renderGrViz({ render_flow_authors(rv) })
 }
+
 
 # Run the Application ==========================================================
 
