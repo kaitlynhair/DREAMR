@@ -76,7 +76,9 @@ dreamr_extract <- function(data, progress = NULL) {
   institutions <- extract_institution(oa_results) %>%
     filter(!affilitation_id == "Unknown") %>%
     mutate(source = "OpenAlex API") %>%
-    mutate(country = countrycode::countrycode(country_code, origin = "iso2c", destination = "country.name"))
+    mutate(country = countrycode::countrycode(country_code, origin = "iso2c", destination = "country.name")) %>%
+    distinct()
+  
 
   # Extract author-level details
   p("Extracting author data", 0.15)
@@ -96,7 +98,9 @@ dreamr_extract <- function(data, progress = NULL) {
                                     as.numeric(publication_year) - as.numeric(first_active_year))
     ) %>%
     rename(author_id = id) %>%
-    mutate(source = "OpenAlex API")
+    mutate(source = "OpenAlex API") %>%
+    distinct()
+  
 
   # Prepare publication-level metadata
   p("Structuring publication metadata", 0.15)
@@ -119,7 +123,8 @@ dreamr_extract <- function(data, progress = NULL) {
       funder_name,               # From added join
       domain                     # From added join
     ) %>%
-    mutate(source = "OpenAlex API")
+    mutate(source = "OpenAlex API") %>%
+    distinct()
 
   # Return structured results
   p("Finalizing results", 0.1)
