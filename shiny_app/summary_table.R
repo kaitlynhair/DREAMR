@@ -26,18 +26,28 @@ summarise_logical <- function(x) {
 }
 
 summarise_categorical <- function(x) {
+  # Replace NA with "Information missing"
+  x <- ifelse(is.na(x), "Information missing", x)
+  
   tab <- table(x, useNA = "ifany")
+  n_total <- length(x)
   pct <- round(100 * tab / sum(tab), 1)
-  paste0(names(tab), ": ", tab, " (", pct, "%)")
+  
+  vals <- paste0(names(tab), ": ", tab, "/", n_total, " (", pct, "%)")
+  paste(vals, collapse = "<br>")   # line breaks between categories
 }
-
 summarise_author_role <- function(authors_df, role, var) {
-  authors_df %>%
+  # Filter by role
+  vals <- authors_df %>%
     filter(author_position == role) %>%
-    pull({{var}}) %>%        # select the variable
-    summarise_var()          # use your existing summarise_var
+    pull({{var}})
+  
+  # Summarize using your existing summarise_var
+  summary <- summarise_var(vals)
+  
+  # If summary returns multiple entries (like categorical), collapse with line breaks
+  paste(summary, collapse = "<br>")
 }
-
 summarise_n_per_paper <- function(authors_df, paper_id_col, inst_col) {
   authors_df %>%
     # select only paper ID and institution columns, remove duplicates
@@ -68,6 +78,85 @@ summarise_years_since_first_pub <- function(authors_df, role, var) {
     }
 }
 
+summarise_years_since_first_pub_all <- function(authors_df, var) {
+  first <- summarise_years_since_first_pub(authors_df, role = "first", var = {{var}})
+  last  <- summarise_years_since_first_pub(authors_df, role = "last", var = {{var}})
+  all   <- summarise_years_since_first_pub(authors_df, role = c("first","last","middle"), var = {{var}})
+  
+  paste0("First: ", first,
+         "<br>Last: ", last,
+         "<br>All: ", all)
+}
+
+summarise_years_since_first_pub_all <- function(authors_df, var) {
+  first <- summarise_years_since_first_pub(authors_df, role = "first", var = {{var}})
+  last  <- summarise_years_since_first_pub(authors_df, role = "last", var = {{var}})
+  all   <- summarise_years_since_first_pub(authors_df, role = c("first","last","middle"), var = {{var}})
+  
+  paste0("First: ", first,
+         "<br>Last: ", last,
+         "<br>All: ", all)
+}
+
+# Example: manual overrides
+manual_trust <- list(
+  "Publication language" = 60,   # you know this one is dodgy
+  "Funding source specified" = 50,
+  "Article type" = 60
+)
+
+# Function to compute completeness-based trust (0–100 scale)
+# Compute trust based on completeness (for columns we know)
+# Trust icons with colors
+compute_trust_icon <- function(oa_results, characteristic, manual_trust) {
+ 
+  # manual override first
+  if (characteristic %in% names(manual_trust)) {
+    trust_val <- manual_trust[[characteristic]]
+  } else {
+    # map characteristics to source
+    col_map <- list(
+      "Open access" = list(df = "pub_metadata", col = "is_oa"),
+      "Publication language" = list(df = "pub_metadata", col = "language"),
+      "Publication year" = list(df = "pub_metadata", col = "publication_year"),
+      "Funding source specified" = list(df = "pub_metadata", col = "funder_name"),
+      "Number of journals" = list(df = "pub_metadata", col = "source_display_name"),
+      "Field of research" = list(df = "pub_metadata", col = "domain"),
+      "Article type" = list(df = "pub_metadata", col = "type"),
+      "Number of authors per paper" = list(df = "authors", col = "author_id"),
+      "Years since first publication" = list(df = "authors", col = "years_sice_first_pub"),
+      "Number of institutions per paper" = list(df = "institutions", col = "affilitation_id"),
+      "Number of countries per paper" = list(df = "institutions", col = "country_code"),
+      "Number of countries" = list(df = "institutions", col = "country"),
+      "Type of institutions (first)" = list(df = "institutions", col = "type"),
+      "Type of institutions (last)" = list(df = "institutions", col = "type")
+    )
+    
+    trust_val <- NA_real_
+    if (characteristic %in% names(col_map)) {
+      map_info <- col_map[[characteristic]]
+      df <- oa_results[[map_info$df]]
+      col <- map_info$col
+      if (!is.null(df) && col %in% names(df)) {
+        completeness <- sum(!is.na(df[[col]])) / nrow(df)
+        trust_val <- round(100 * completeness, 1)
+      }
+    }
+  }
+  
+  # Return icon HTML
+  if (is.na(trust_val)) {
+    return('<i class="fa fa-solid fa-triangle-exclamation" style="color: orange;"></i>') # unknown
+  } else if (trust_val >= 80) {
+    return('<i class="fa fa-check-circle" style="color: green;"></i>')   # good
+  } else if (trust_val >= 45) {
+    return('<i class="fa fa-exclamation-triangle" style="color: red;"></i>') # warning
+  } else {
+    return('<i class="fa fa-exclamation-triangle" style="color: red;"></i>')     # red warning X
+  }
+}
+
+
 #' Generate Paper Summary Table from OA Results
 #'
 #' Summarizes key characteristics of papers and authors from an OpenAlex-like
@@ -87,13 +176,8 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {
 
   # Optional overall retrieval summary
   found_n <- if (!is.null(oa_results$pub_metadata)) nrow(oa_results$pub_metadata) else 0
-  found_row <- NULL
-  if (!is.null(total_citations) && is.finite(total_citations) && total_citations > 0) {
-    pct_found <- round(100 * found_n / total_citations, 1)
-    found_row <- list("Found on OpenAlex" = paste0(found_n, "/", total_citations, " (", pct_found, "%)"))
-  }
 
-  summary_table <- c(found_row, list(
+  summary_table <- c(list(
     "Open access" = summarise_logical(oa_results$pub_metadata$is_oa),
     "Publication language" = summarise_categorical(oa_results$pub_metadata$language),
     "Publication year" = summarise_var(oa_results$pub_metadata$publication_year),
@@ -105,21 +189,22 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {
     "Proportion female authors (first)" = "Unknown",
     "Proportion female authors (last)" = "Unknown",
     "Proportion female authors (all)" = "Unknown",
-    "Years since first pub (all)" =  summarise_years_since_first_pub(oa_results$authors, role = c("first", "last","middle"), var = years_sice_first_pub),
-    "Years since first pub (first)" = summarise_years_since_first_pub(oa_results$authors, role = "first", var = years_sice_first_pub),
-    "Years since first pub (last)" = summarise_years_since_first_pub(oa_results$authors, role = "last", var = years_sice_first_pub),
+    "Years since first publication" = summarise_years_since_first_pub_all(oa_results$authors, var = years_sice_first_pub),
     "Number of institutions per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "affilitation_id"),
     "Number of countries per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "country_code"),
     "Number of countries" = summarise_categorical(oa_results$institutions$country),
-    "Type of institutions (all)" = summarise_author_role(oa_results$institutions,  role = c("first", "last", "middle"), var = type),
     "Type of institutions (first)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
     "Type of institutions (last)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
   ))
-
-  # Convert list into tidy data frame
+  
+  browser()
+  # Add trust scores
+  # Default: based on completeness
+  
   summary_df <- tibble::enframe(summary_table, name = "Characteristic", value = "Summary") %>%
-    tidyr::unnest_longer(Summary)
-
-  return(summary_df)
+    tidyr::unnest_longer(Summary) %>%
+    rowwise() %>%
+    mutate(Trust = compute_trust_icon(oa_results, Characteristic, manual_trust)) %>%
+    ungroup()
 }
 
