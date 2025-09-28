@@ -48,8 +48,7 @@ render_flow_references <- function(rv) {
 # Institutions flowchart
 render_flow_institutions <- function(rv) {
   req(rv$oa_data)
-  
-  browser()
+
   inst_df <- rv$institutions
   n_total <- length(unique(inst_df$affilitation_id))
   n_with_ror <- length(unique(inst_df$affilitation_id[!is.na(inst_df$ror)]))
