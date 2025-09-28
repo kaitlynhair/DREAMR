@@ -86,9 +86,9 @@ dreamr_extract <- function(data, progress = NULL) {
     select(-display_name) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
-    select(openalex_id, id, publication_year, author_position, orcid) %>%
-    distinct %>%
+    select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
     mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
+    mutate( first_name = stringr::word(display_name, 1)) %>%
     rowwise() %>%
     mutate(first_active_year = get_first_active_year(orcid)) %>%
     ungroup() %>%
@@ -101,6 +101,12 @@ dreamr_extract <- function(data, progress = NULL) {
     mutate(source = "OpenAlex API") %>%
     distinct()
   
+  # Add gender data
+  unique_first_names <- unique(authors$first_name)
+  gender_data <- gender(unique_first_names, method = "genderize") %>%
+    select(name, gender)  # Keep only name and gender
+  authors <- authors %>%
+    left_join(gender_data, by = c("first_name" = "name"))
 
   # Prepare publication-level metadata
   p("Structuring publication metadata", 0.15)
@@ -306,13 +312,13 @@ global_south_country_codes <- c(
 #' institution_data <- extract_institution(data, author_position = "first")
 #' }
 extract_institution <- function(data) {
-
   # Extract institution information for the specified author position
   res_institution <- data %>%
    select(-display_name, -type) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     dplyr::select(
+      author_name = display_name,
       openalex_id,
       doi,
       author_id = id,
