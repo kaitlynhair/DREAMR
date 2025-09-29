@@ -87,13 +87,12 @@ dreamr_extract <- function(data, progress = NULL) {
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
-    filter(author_position %in% c("first","last")) %>%
     mutate(
       orcid = gsub("https://orcid.org/", "", orcid),
       first_name = stringr::word(display_name, 1)
     ) %>%
     rename(author_id = id) %>%
-    mutate(source = "OpenAlex API") %>%
+    mutate(source = "ORCID API") %>%
     distinct()
   
   # De-duplicate ORCIDs before calling slow function
