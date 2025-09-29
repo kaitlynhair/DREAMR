@@ -75,9 +75,9 @@ render_flow_authors <- function(rv) {
   n_with_orcid_known_year <- sum(!is.na(auth_df$orcid) & auth_df$first_active_year != "Unknown")
   
   labels <- c(
-    paste0(n_total, " unique first/last authors in OpenAlex"),
-    count_with_pct(n_with_orcid, n_total, "first/last authors with ORCID"),
-    count_with_pct(n_with_orcid_known_year, n_with_orcid, "first/last authors with minimum ORCID record")
+    paste0(n_total, " unique authors in OpenAlex"),
+    count_with_pct(n_with_orcid, n_total, "authors with ORCID"),
+    count_with_pct(n_with_orcid_known_year, n_with_orcid, "authors with minimum ORCID record")
   )
   
   visualize_flow_3(labels)
