@@ -36,34 +36,41 @@ summarise_categorical <- function(x) {
   vals <- paste0(names(tab), ": ", tab, "/", n_total, " (", pct, "%)")
   paste(vals, collapse = "<br>")   # line breaks between categories
 }
-summarise_author_role <- function(authors_df, role, var) {
+summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
   # Filter by role
   vals <- authors_df %>%
     filter(author_position == role) %>%
     pull({{var}})
   
-  # Summarize using your existing summarise_var
-  summary <- summarise_var(vals)
-  
-  # If summary returns multiple entries (like categorical), collapse with line breaks
-  paste(summary, collapse = "<br>")
-}
-summarise_n_per_paper <- function(authors_df, paper_id_col, inst_col) {
-  authors_df %>%
-    # select only paper ID and institution columns, remove duplicates
-    select(!!sym(paper_id_col), !!sym(inst_col)) %>%
-    distinct() %>%
-    # count unique institutions per paper
-    group_by(!!sym(paper_id_col)) %>%
-    summarise(n_institutions = n(), .groups = "drop") %>%
-    pull(n_institutions) %>%           # extract numeric vector
-    {                                  # compute median (IQR)
-      median_val <- median(., na.rm = TRUE)
-      q25 <- quantile(., 0.25, na.rm = TRUE)
-      q75 <- quantile(., 0.75, na.rm = TRUE)
-      paste0(median_val, " (", q25, "–", q75, ")")
+  # Handle categorical variables with optional filtering
+  if (!is.numeric(vals)) {
+    # Replace NA with "Information missing"
+    vals <- ifelse(is.na(vals), "Information missing", vals)
+    
+    tab <- table(vals, useNA = "ifany")
+    n_total <- length(vals)
+    pct <- round(100 * tab / sum(tab), 1)
+    
+    df <- data.frame(
+      category = names(tab),
+      count = as.numeric(tab),
+      pct = as.numeric(pct),
+      stringsAsFactors = FALSE
+    )
+    
+    # Optionally filter categories
+    if (!is.null(include_only)) {
+      df <- df %>% dplyr::filter(category %in% include_only)
     }
+    
+    summary <- paste0(df$category, ": ", df$count, "/", n_total, " (", df$pct, "%)")
+    return(paste(summary, collapse = "<br>"))
+  }
+  
+  # Otherwise just use numeric summariser
+  return(summarise_var(vals))
 }
+
 
 summarise_years_since_first_pub <- function(authors_df, role, var) {
   authors_df %>%
@@ -186,9 +193,8 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {
     "Article type" = summarise_categorical(oa_results$pub_metadata$type),
     "Funding source specified" =  summarise_categorical(oa_results$pub_metadata$funder_name),
     "Number of authors per paper" = summarise_n_per_paper(oa_results$authors, paper_id_col = "openalex_id", inst_col = "author_id"),
-    "Proportion female authors (first)" = "Unknown",
-    "Proportion female authors (last)" = "Unknown",
-    "Proportion female authors (all)" = "Unknown",
+    "Proportion female authors (first)" =summarise_author_role(oa_results$authors, role ="first", var="gender", include_only="female"),
+    "Proportion female authors (last)" = summarise_author_role(oa_results$authors, role ="last", var="gender", include_only="female"),
     "Years since first publication" = summarise_years_since_first_pub_all(oa_results$authors, var = years_sice_first_pub),
     "Number of institutions per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "affilitation_id"),
     "Number of countries per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "country_code"),
@@ -196,8 +202,7 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {
     "Type of institutions (first)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
     "Type of institutions (last)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
   ))
-  
-  browser()
+
   # Add trust scores
   # Default: based on completeness
   

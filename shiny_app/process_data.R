@@ -81,32 +81,49 @@ dreamr_extract <- function(data, progress = NULL) {
   
 
   # Extract author-level details
-  p("Extracting author data", 0.15)
+  p("Accessing ORCID records", 0.05)
   authors <- oa_results %>%
     select(-display_name) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
-    mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
-    mutate( first_name = stringr::word(display_name, 1)) %>%
-    rowwise() %>%
-    mutate(first_active_year = get_first_active_year(orcid)) %>%
-    ungroup() %>%
+    filter(author_position %in% c("first","last")) %>%
     mutate(
-      years_sice_first_pub = ifelse(first_active_year == "Unknown",
-                                    "Unknown",
-                                    as.numeric(publication_year) - as.numeric(first_active_year))
+      orcid = gsub("https://orcid.org/", "", orcid),
+      first_name = stringr::word(display_name, 1)
     ) %>%
     rename(author_id = id) %>%
     mutate(source = "OpenAlex API") %>%
     distinct()
   
+  # De-duplicate ORCIDs before calling slow function
+  unique_orcids <- unique(na.omit(authors$orcid))
+  
+  # Lookup only once per ORCID
+  orcid_years <- purrr::map_dfr(unique_orcids, function(o) {
+    tibble(orcid = o, first_active_year = get_first_active_year(o))
+  })
+  
+  # Join back
+  authors <- authors %>%
+    left_join(orcid_years, by = "orcid") %>%
+    mutate(
+      years_sice_first_pub = ifelse(
+        first_active_year == "Unknown",
+        "Unknown",
+        as.numeric(publication_year) - as.numeric(first_active_year)
+      )
+    )
+  
+
   # Add gender data
+  p("Running first names through gender R package", 0.10)
   unique_first_names <- unique(authors$first_name)
-  gender_data <- gender(unique_first_names, method = "genderize") %>%
+  gender_data <- gender(unique_first_names, method = "ssa") %>%
     select(name, gender)  # Keep only name and gender
   authors <- authors %>%
     left_join(gender_data, by = c("first_name" = "name"))
+
 
   # Prepare publication-level metadata
   p("Structuring publication metadata", 0.15)
@@ -639,57 +656,46 @@ oa_retrieval_summary <- function(refdata, oa_list) {
 }
 
 
-#' Extract metadata from OpenAlex for a list of identifiers
-#'
-#' This function retrieves metadata (e.g., concepts, funders, citation count, and more)
-#' from OpenAlex for a given set of publication identifiers such as DOIs, PMIDs, or PMCIDs.
-#'
-#' @param data A data frame containing publication identifiers.
-#' @param identifier A character vector specifying the type of identifier to query
-#' (e.g., "pmid", "doi", or "pmcid"). Defaults to "pmid".
-#'
-#' @importFrom dplyr bind_rows
-#' @importFrom openalexR oa_fetch
-#' @return A data frame containing metadata retrieved from OpenAlex for the provided identifiers.
-#' If no metadata is retrieved, returns NULL.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Example usage:
-#' publication_data <- data.frame(doi = c("10.1038/nature12373", "10.1126/science.169.3946.635"))
-#' metadata <- oa_metadata(publication_data, identifier = "doi")
-#' }
-oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
-  res <- NULL
+oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid"), 
+                        batch_size = 200, sleep = 0.5) {
+  identifier <- match.arg(identifier)
+  identifier_col <- identifier
+  
+  ids <- data[[identifier_col]]
+  if (is.null(ids)) {
+    stop("Column '", identifier, "' not found in data.")
+  }
+  
+  # Prefix IDs with type (OpenAlex expects e.g., doi:10.xxx)
+  ids_prefixed <- paste0(identifier, ":", ids)
 
-  identifier_col <- "identifier"
-
-  # Create a dataframe with data from OpenAlex
-  for (i in seq_along(data[[identifier_col]])) {
-    new <- NULL
-    suppressWarnings({
+  # Split into batches
+  id_batches <- split(ids_prefixed, ceiling(seq_along(ids_prefixed) / batch_size))
+  
+  results <- purrr::map_dfr(id_batches, function(batch) {
+    purrr::map_dfr(batch, function(single_id) {
       ans <- try(
         openalexR::oa_fetch(
-          identifier = data[[identifier_col]][i],
+          identifier = single_id,
           entity = "works"
         ),
         silent = TRUE
       )
+      
+      if (!inherits(ans, "try-error") && is.data.frame(ans)) {
+        return(ans)
+      } else {
+        return(NULL)
+      }
     })
-    if (!inherits(ans, "try-error") && is.data.frame(ans)) {
-      new <- ans
-    }
-    if (is.data.frame(new)) {
-      res <- dplyr::bind_rows(res, new)
-    }
+  })
+  
+  if (nrow(results) == 0) {
+    message("Couldn't tag any records.")
+    return(NULL)
   }
-
-  if (is.null(res)) {
-    message("Couldn't tag any more records.")
-  }
-
-  Sys.sleep(2) # adding a 2 second system sleep between calls to avoid API limits
-  return(res)
+  
+  results
 }
+
 
