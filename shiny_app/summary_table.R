@@ -71,6 +71,22 @@ summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
   return(summarise_var(vals))
 }
 
+summarise_n_per_paper <- function(authors_df, paper_id_col, inst_col) {
+  authors_df %>%
+    # select only paper ID and institution columns, remove duplicates
+    select(!!sym(paper_id_col), !!sym(inst_col)) %>%
+    distinct() %>%
+    # count unique institutions per paper
+    group_by(!!sym(paper_id_col)) %>%
+    summarise(n_institutions = n(), .groups = "drop") %>%
+    pull(n_institutions) %>%           # extract numeric vector
+    {                                  # compute median (IQR)
+      median_val <- median(., na.rm = TRUE)
+      q25 <- quantile(., 0.25, na.rm = TRUE)
+      q75 <- quantile(., 0.75, na.rm = TRUE)
+      paste0(median_val, " (", q25, "–", q75, ")")
+    }
+}
 
 summarise_years_since_first_pub <- function(authors_df, role, var) {
   authors_df %>%

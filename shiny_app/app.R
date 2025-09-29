@@ -24,6 +24,7 @@ require(stringr)
 require(XML)
 require(openxlsx)
 require(gender)
+require(genderdata)
 
 # Source functions
 source("process_data.R")
