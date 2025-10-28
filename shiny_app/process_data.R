@@ -65,14 +65,14 @@ dreamr_extract <- function(data, progress = NULL) {
   funders <- extract_funder(oa_results)
 
   # Add research domain information
-  p("Classifying research domains", 0.15)
+  p("Classifying research domains", 0.10)
   domains <- extract_domain(oa_results)
 
   oa_results <- left_join(oa_results, funders)
   oa_results <- left_join(oa_results, domains)
 
   # Extract institution-level details
-  p("Extracting institution data", 0.15)
+  p("Extracting institution data", 0.10)
   institutions <- extract_institution(oa_results) %>%
     filter(!affilitation_id == "Unknown") %>%
     mutate(source = "OpenAlex API") %>%
@@ -81,7 +81,6 @@ dreamr_extract <- function(data, progress = NULL) {
   
 
   # Extract author-level details
-  p("Accessing ORCID records", 0.05)
   authors <- oa_results %>%
     select(-display_name) %>%
     rename(openalex_id = id) %>%
@@ -97,11 +96,19 @@ dreamr_extract <- function(data, progress = NULL) {
   
   # De-duplicate ORCIDs before calling slow function
   unique_orcids <- unique(na.omit(authors$orcid))
-  
+  orcid_progress_per_id <- 0.15 / length(unique_orcids)
   # Lookup only once per ORCID
-  orcid_years <- purrr::map_dfr(unique_orcids, function(o) {
-    tibble(orcid = o, first_active_year = get_first_active_year(o))
-  })
+  orcid_years <- purrr::map_dfr(
+    seq_along(unique_orcids),
+    function(i) {
+      o <- unique_orcids[[i]]
+      p(paste0("Processing ORCID ", i, "/", length(unique_orcids)), orcid_progress_per_id)
+      tibble(
+        orcid = o,
+        first_active_year = get_first_active_year(o)
+      )
+    }
+  )
   
   # Join back
   authors <- authors %>%
