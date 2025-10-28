@@ -95,7 +95,16 @@ dreamr_extract <- function(data, progress = NULL) {
     distinct()
   
   # De-duplicate ORCIDs before calling slow function
-  unique_orcids <- unique(na.omit(authors$orcid))
+  retrieve_all_orcids <- TRUE  # TO DO: user configs should all be stored in separate place
+  if (retrieve_all_orcids) {
+    unique_orcids <- unique(na.omit(authors$orcid))
+  } else {
+    unique_orcids <- authors |>
+      filter(author_position %in% c("first", "last")) |>
+      pull(orcid) |>
+      na.omit() |>
+      unique()
+  }
   orcid_progress_per_id <- 0.15 / length(unique_orcids)
   # Lookup only once per ORCID
   orcid_years <- purrr::map_dfr(
