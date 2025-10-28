@@ -37,7 +37,12 @@ ENV SHINY_ENV=${SHINY_ENV}
 RUN if [ "$SHINY_ENV" = "dev" ]; then \
     R -e "install.packages(c('digest'))"; \
   fi
-  
+
+# TO DO: move these packages to above install layer
+# Right now here to avoid rebuilding entire packages layer
+RUN R -e "install.packages(c('gender', 'DiagrammeR'))"
+RUN R -e "if (!requireNamespace('genderdata', quietly=TRUE)) devtools::install_github('lmullen/genderdata')"
+
 # Copy app into Shiny Server apps dir (use compose volume for live dev)
 COPY shiny_app /srv/shiny-server/dreamr
 

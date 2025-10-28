@@ -1,4 +1,4 @@
-dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8) {
+dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8, progress = NULL) {
   # Ensure .cache folder exists
   if (!dir.exists(cache_dir)) {
     dir.create(cache_dir)
@@ -18,7 +18,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 
   # Otherwise, compute and save
   message("⏳ Cache miss: Running dreamr_extract() and saving to cache")
-  result <- dreamr_extract(refdata)
+  result <- dreamr_extract(refdata, progress = progress)
 
   # Save with full hash in filename
   saveRDS(result, file = file.path(cache_dir, paste0(short_hash, "_oa_data.rds")))
@@ -49,25 +49,36 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 #' head(results$institutions)
 #' }
 #' @export
-dreamr_extract <- function(data) {
+dreamr_extract <- function(data, progress = NULL) {
+  p <- function(detail, amount) {
+    if (!is.null(progress)) {
+      try(progress(detail, amount), silent = TRUE)
+    }
+  }
 
   # Pull raw OpenAlex results 
+  p("Fetching OpenAlex records", 0.15)
   oa_results <- pull_openalex(data)
 
   # Add funder information
+  p("Extracting funder information", 0.15)
   funders <- extract_funder(oa_results)
 
   # Add research domain information
+  p("Classifying research domains", 0.15)
   domains <- extract_domain(oa_results)
 
   oa_results <- left_join(oa_results, funders)
   oa_results <- left_join(oa_results, domains)
 
   # Extract institution-level details
+  p("Extracting institution data", 0.15)
   institutions <- extract_institution(oa_results) %>%
     filter(!affilitation_id == "Unknown") %>%
     mutate(source = "OpenAlex API") %>%
-    mutate(country = countrycode::countrycode(country_code, origin = "iso2c", destination = "country.name"))
+    mutate(country = countrycode::countrycode(country_code, origin = "iso2c", destination = "country.name")) %>%
+    distinct()
+  
 
   # Extract ROR info for each institution
   institution_ror <- extract_ror(institutions)
@@ -77,24 +88,51 @@ dreamr_extract <- function(data) {
     left_join(institution_ror, by = "ror")
   
   # Extract author-level details
+  p("Accessing ORCID records", 0.05)
   authors <- oa_results %>%
     select(-display_name) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
-    select(openalex_id, id, publication_year, author_position, orcid) %>%
-    mutate(orcid = gsub("https://orcid.org/", "", orcid)) %>%
-    rowwise() %>%
-    mutate(first_active_year = get_first_active_year(orcid)) %>%
-    ungroup() %>%
+    select(openalex_id, id, publication_year, author_position, orcid, display_name) %>%
     mutate(
-      years_sice_first_pub = ifelse(first_active_year == "Unknown",
-                                    "Unknown",
-                                    as.numeric(publication_year) - as.numeric(first_active_year))
+      orcid = gsub("https://orcid.org/", "", orcid),
+      first_name = stringr::word(display_name, 1)
     ) %>%
     rename(author_id = id) %>%
-    mutate(source = "OpenAlex API")
+    mutate(source = "ORCID API") %>%
+    distinct()
+  
+  # De-duplicate ORCIDs before calling slow function
+  unique_orcids <- unique(na.omit(authors$orcid))
+  
+  # Lookup only once per ORCID
+  orcid_years <- purrr::map_dfr(unique_orcids, function(o) {
+    tibble(orcid = o, first_active_year = get_first_active_year(o))
+  })
+  
+  # Join back
+  authors <- authors %>%
+    left_join(orcid_years, by = "orcid") %>%
+    mutate(
+      years_sice_first_pub = ifelse(
+        first_active_year == "Unknown",
+        "Unknown",
+        as.numeric(publication_year) - as.numeric(first_active_year)
+      )
+    )
+  
+
+  # Add gender data
+  p("Running first names through gender R package", 0.10)
+  unique_first_names <- unique(authors$first_name)
+  gender_data <- gender(unique_first_names, method = "ssa") %>%
+    select(name, gender)  # Keep only name and gender
+  authors <- authors %>%
+    left_join(gender_data, by = c("first_name" = "name"))
+
 
   # Prepare publication-level metadata
+  p("Structuring publication metadata", 0.15)
   pub_metadata <- oa_results %>%
     dplyr::select(
       id,                        # OpenAlex ID
@@ -114,9 +152,11 @@ dreamr_extract <- function(data) {
       funder_name,               # From added join
       domain                     # From added join
     ) %>%
-    mutate(source = "OpenAlex API")
+    mutate(source = "OpenAlex API") %>%
+    distinct()
 
   # Return structured results
+  p("Finalizing results", 0.1)
   return(list(
     pub_metadata = pub_metadata,
     institutions = institutions,
@@ -195,12 +235,11 @@ pull_openalex <- function(data) {
     oa_result <- oa_metadata(data_doi, identifier = "doi")
 
     # If no abstract, make it NA
-    if (!"ab" %in% colnames(oa_result)) {
-      oa_result <- oa_result %>% mutate(ab = NA)
+    if (!"abstract" %in% colnames(oa_result)) {
+      oa_result <- oa_result %>% mutate(abstract = NA)
     }
     oa_results <- rbind(oa_result, oa_results)
   }
-
   # Remove found from data
   if ("doi" %in% colnames(data)) {
     data <- data %>% filter(!doi %in% oa_results$doi)
@@ -213,21 +252,19 @@ pull_openalex <- function(data) {
       data_pmid <- data %>% filter(!is.na(pmid)) %>%
         mutate(identifier = paste0("pmid:", pmid))
       oa_result <- oa_metadata(data_pmid, identifier = "pmid")
-      if (!"ab" %in% colnames(oa_result)) {
-        oa_result <- oa_result %>% mutate(ab = NA)
+      if (!"abstract" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(abstract = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
       
     }
   }
-
   # Remove found from data
   if ("pmid" %in% colnames(oa_results) & "pmid" %in% colnames(data)) {
     data <- data %>%
       mutate(pmid = ifelse(is.na(pmid), "", pmid)) %>%
       filter(!pmid %in% oa_results$pmid)
   }
-
   # Filter records with pmcid and fetch
   if ("pmcid" %in% colnames(data)) {
     
@@ -235,14 +272,16 @@ pull_openalex <- function(data) {
       data_pmcid <- data %>% filter(!is.na(pmcid)) %>%
         mutate(identifier = paste0("pmcid:", pmcid))
       oa_result <- oa_metadata(data_pmcid, identifier = "pmcid")
-      if (!"ab" %in% colnames(oa_result)) {
-        oa_result <- oa_result %>% mutate(ab = NA)
+      if (!"abstract" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(abstract = NA)
+      }
+      if (!"license" %in% colnames(oa_result)) {
+        oa_result <- oa_result %>% mutate(license = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
       
     }
-    oa_results <- rbind(oa_result, oa_results)
-  } 
+  }
   return(oa_results)
 
 }
@@ -296,13 +335,13 @@ global_south_country_codes <- c(
 #' institution_data <- extract_institution(data, author_position = "first")
 #' }
 extract_institution <- function(data) {
-
   # Extract institution information for the specified author position
   res_institution <- data %>%
    select(-display_name, -type) %>%
     rename(openalex_id = id) %>%
     tidyr::unnest(authorships) %>%
     dplyr::select(
+      author_name = display_name,
       openalex_id,
       doi,
       author_id = id,
@@ -698,58 +737,46 @@ oa_retrieval_summary <- function(refdata, oa_list) {
 }
 
 
-#' Extract metadata from OpenAlex for a list of identifiers
-#'
-#' This function retrieves metadata (e.g., concepts, funders, citation count, and more)
-#' from OpenAlex for a given set of publication identifiers such as DOIs, PMIDs, or PMCIDs.
-#'
-#' @param data A data frame containing publication identifiers.
-#' @param identifier A character vector specifying the type of identifier to query
-#' (e.g., "pmid", "doi", or "pmcid"). Defaults to "pmid".
-#'
-#' @importFrom dplyr bind_rows
-#' @importFrom openalexR oa_fetch
-#' @return A data frame containing metadata retrieved from OpenAlex for the provided identifiers.
-#' If no metadata is retrieved, returns NULL.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Example usage:
-#' publication_data <- data.frame(doi = c("10.1038/nature12373", "10.1126/science.169.3946.635"))
-#' metadata <- oa_metadata(publication_data, identifier = "doi")
-#' }
-oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid")) {
-  res <- NULL
+oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid"), 
+                        batch_size = 200, sleep = 0.5) {
+  identifier <- match.arg(identifier)
+  identifier_col <- identifier
+  
+  ids <- data[[identifier_col]]
+  if (is.null(ids)) {
+    stop("Column '", identifier, "' not found in data.")
+  }
+  
+  # Prefix IDs with type (OpenAlex expects e.g., doi:10.xxx)
+  ids_prefixed <- paste0(identifier, ":", ids)
 
-
-  identifier_col <- "identifier"
-
-  # Create a dataframe with data from OpenAlex
-  for (i in seq_along(data[[identifier_col]])) {
-    new <- NULL
-    suppressWarnings({
+  # Split into batches
+  id_batches <- split(ids_prefixed, ceiling(seq_along(ids_prefixed) / batch_size))
+  
+  results <- purrr::map_dfr(id_batches, function(batch) {
+    purrr::map_dfr(batch, function(single_id) {
       ans <- try(
         openalexR::oa_fetch(
-          identifier = data[[identifier_col]][i],
+          identifier = single_id,
           entity = "works"
         ),
         silent = TRUE
       )
+      
+      if (!inherits(ans, "try-error") && is.data.frame(ans)) {
+        return(ans)
+      } else {
+        return(NULL)
+      }
     })
-    if (!inherits(ans, "try-error") && is.data.frame(ans)) {
-      new <- ans
-    }
-    if (is.data.frame(new)) {
-      res <- dplyr::bind_rows(res, new)
-    }
+  })
+  
+  if (nrow(results) == 0) {
+    message("Couldn't tag any records.")
+    return(NULL)
   }
-
-  if (is.null(res)) {
-    message("Couldn't tag any more records.")
-  }
-
-  Sys.sleep(2) # adding a 2 second system sleep between calls to avoid API limits
-  return(res)
+  
+  results
 }
+
 

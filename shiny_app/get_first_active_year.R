@@ -51,3 +51,5 @@ get_first_active_year <- function(orcid_id) {
 
   return(as.character(min(years)))  # always return character
 }
+
+
