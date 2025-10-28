@@ -1,5 +1,8 @@
+# Explicitly name shared volume
+# Ensures reference to the same named volume even if running compose from different folders
 volumes:
-  r_libs_shared:  # shared R package library volume
+  r_libs_shared:
+    name: r_libs_shared_global
 
 services:
   dreamr:
