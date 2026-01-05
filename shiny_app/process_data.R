@@ -80,6 +80,13 @@ dreamr_extract <- function(data, progress = NULL) {
     distinct()
   
 
+  # Extract ROR info for each institution
+  institution_ror <- extract_ror(institutions)
+  
+  # Join back into institution-level detail
+  institutions <- institutions %>% 
+    left_join(institution_ror, by = "ror")
+  
   # Extract author-level details
   authors <- oa_results %>%
     select(-display_name) %>%
@@ -384,6 +391,81 @@ extract_institution <- function(data) {
 
   # Return both successful and failed results combined
   dplyr::bind_rows(res_institution, res_institution_failed)
+}
+
+
+#' Retrieve geolocation and country information from ROR
+#'
+#' This function queries the [Research Organization Registry (ROR)](https://ror.org) API
+#' for institutions in a dataset and extracts available metadata such as latitude,
+#' longitude, continent, and country information. Each unique ROR ID is converted into
+#' its API endpoint, queried, and enriched with geospatial and location metadata.
+#'
+#' @param data A data frame containing at least a column `ror` with ROR identifiers
+#'   (e.g., "https://ror.org/009kr6r15").
+#'
+#' @import dplyr
+#'
+#' @return A data frame where each unique ROR ID is enriched with additional metadata:
+#'   \itemize{
+#'     \item \code{ror} — the original ROR identifier
+#'     \item \code{ror_api} — the corresponding ROR API endpoint
+#'     \item \code{latitude}, \code{longitude} — geographic coordinates of the institution
+#'     \item \code{continent_code}, \code{continent_name} — continent-level information
+#'     \item \code{country_code}, \code{country_name} — country-level information
+#'   }
+#'   Missing or unavailable fields are returned as `NA`.
+#'
+#' @examples
+#' \dontrun{
+#' # Example input data with ROR IDs
+#' df <- data.frame(
+#'   ror = c("https://ror.org/01ej9dk98", "https://ror.org/009kr6r15")
+#' )
+#'
+#' # Retrieve enriched institution metadata
+#' enriched_df <- extract_ror(df)
+#' }
+#'
+#' @export
+extract_ror <- function(data){
+  
+  unique_inst <- data %>% 
+    distinct(ror) %>% 
+    mutate(ror_api = gsub("https://ror.org/", 
+                          "https://api.ror.org/organizations/", ror))
+  
+  
+  fetch_coords <- function(ror_url) {
+    ror_response <- httr::GET(ror_url)
+    ror_data <- httr::content(ror_response, "text", encoding = "UTF-8")
+    ror_json <- jsonlite::fromJSON(ror_data)
+    
+    if (!is.null(ror_json$locations)) {
+      tibble(
+        latitude  = ror_json$locations$geonames_details$lat,
+        longitude = ror_json$locations$geonames_details$lng,
+        continent_code = ror_json$locations$geonames_details$continent_code,
+        continent_name = ror_json$locations$geonames_details$continent_name
+
+      )
+    } else {
+      tibble(latitude = NA_real_, 
+             longitude = NA_real_,
+             continent_code = NA_character_,
+             continent_name = NA_character_
+
+      )
+    }
+    
+  }
+  
+  coords_df <- purrr::map_dfr(unique_inst$ror_api, fetch_coords)
+  
+  # Check this if no coords found
+  unique_inst <- bind_cols(unique_inst, coords_df)
+  
+  return(unique_inst)
 }
 
 #' Extract funder information and grant IDs from OpenAlex results

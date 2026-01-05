@@ -23,8 +23,10 @@ require(shinyWidgets)
 require(stringr)
 require(XML)
 require(openxlsx)
+require(leaflet)
 require(gender)
 require(genderdata)
+
 
 # Source functions
 source("process_data.R")
@@ -143,6 +145,22 @@ ui <- fluidPage(
                  DTOutput("summary_table") %>% withSpinner(color="#00695C", type=7)
         ),
         tabPanel("Overview",
+                 br(),
+                 radioGroupButtons(
+                   inputId = "map_type",
+                   label = "Map View:",
+                   choices = c("🌍 Global" = "countries", "🎓 Institutional" = "institutions"),
+            
+                   status = "secondary", 
+                   selected = "countries", 
+                   individual = TRUE     
+                 ),
+                 leafletOutput("institution_map", height = 500) %>% withSpinner(color="#754E9B", type = 7)
+                 
+                 # fluidRow(
+                 #   column(6, plotlyOutput("oa_plot")),   # 6-column width (half of the row)
+                 #   column(6, plotlyOutput("funder_plot")) # 6-column width (other half)
+                 # )
                  br()
         ),
 
@@ -233,6 +251,140 @@ server <- function(input, output) {
     rv$loading <- FALSE
   })
 
+  # Location - render leaflet map -----
+  output$institution_map <- renderLeaflet({
+    
+    validate(
+      need(nrow(rv$institutions) > 0, "No overview available. Please input a file.")
+    )
+    
+    if (input$map_type == "countries") {
+    
+      world <- rnaturalearth::ne_countries(returnclass = "sf") %>%
+        select(iso_a2, name_long, geometry)
+
+
+      map_data <- rv$institutions %>%
+        group_by(country) %>%
+        mutate(num_auth = n()) %>%
+        ungroup()
+
+
+      world_map <- world %>%
+        left_join(map_data, by = c("iso_a2" = "country_code")) %>% 
+        mutate(num_auth = ifelse(is.na(num_auth), 0, num_auth))
+
+      pal <- colorNumeric(
+        palette = c("lightgrey", viridis::viridis(256, option = "D")),
+        domain = world_map$num_auth,
+        na.color = "lightgrey"
+      )
+
+      
+      # Define continent centers and names
+      continent_labels <- data.frame(
+        continent = c("North America", "South America", "Europe", "Africa", "Asia", "Oceania"),
+        lat = c(45, -15, 55, 0, 35, -25),
+        lng = c(-100, -60, 10, 20, 100, 135),
+        stringsAsFactors = FALSE
+      )
+      
+      leaflet(world_map) %>%
+            addProviderTiles(providers$OpenStreetMap) %>%
+        addPolygons(
+          data = world_map,
+          fillColor = "grey80",
+          fillOpacity = 1,
+          color = NA
+        ) %>%
+        addPolygons(
+          fillColor = ~pal(num_auth),
+          fillOpacity = 0.8,
+          color = "white",
+          weight = 0.5,
+          popup = ~paste0(
+            "<b>", name_long, "</b><br>",
+            "No. Authors: ", num_auth, "<br>"
+          ),
+          highlightOptions = highlightOptions(
+            weight = 1,
+            color = "#666",
+            fillOpacity = 0.9,
+            bringToFront = TRUE
+          )
+        ) %>%
+        addLegend(
+          pal = pal,
+          values = ~num_auth[!is.na(num_auth)],
+          position = "bottomleft",
+          title = "Number of Authors"
+        ) %>%
+        addLabelOnlyMarkers(
+          data = continent_labels,
+          lng = ~lng,
+          lat = ~lat,
+          label = ~continent,
+          labelOptions = labelOptions(
+            noHide = TRUE,
+            direction = "center",
+            textOnly = TRUE,
+            style = list(
+              "color" = "#333333",
+              "font-family" = "Courier New, monospace",
+              "font-size" = "14px"
+              # "font-weight" = "bold",
+              # "text-shadow" = "1px 1px 2px rgba(255,255,255,0.8)"
+            )
+          )
+        ) %>%
+        setView(lat = 0, lng = 0, zoom = 1)
+      
+      } else if (input$map_type == "institutions") {
+
+    
+    map_data <- rv$institutions %>% 
+      group_by(country) %>% 
+      mutate(num_auth = n_distinct(author_id)) %>% 
+      ungroup() %>% 
+      arrange(desc(num_auth))
+    
+    color_palette <- colorFactor(
+      palette = "Set3",
+      domain = map_data$type
+    )
+    
+    scale_size <- function(num) {
+      scales::rescale(num, c(4, 25))  # Adjust size range as necessary
+    }
+    
+
+    leaflet(map_data) %>%
+      addProviderTiles(providers$Esri.WorldStreetMap
+      ) %>%
+      addCircleMarkers(
+        ~longitude,
+        ~latitude,
+        popup = ~paste0("<b>", display_name, "</b><br>",
+                        "Institution Type: ", type, "<br>",
+                        "No. of Authors: ", num_auth),
+        radius = ~scale_size(num_auth),
+        color = "black",
+        fillColor = ~color_palette(type),
+        fillOpacity = 1,
+        label = ~display_name,
+        weight = 1,
+        layerId = ~display_name
+      ) %>%
+      addLegend(
+        position = "bottomleft",
+        pal = color_palette,
+        values = ~type,
+        title = "Institution Type",
+        opacity = 0.8
+      ) %>%
+      setView(lat = 0, lng = 0, zoom = 1) 
+    }
+  })
 
 # Output --- summary table
   output$summary_table <- renderDT({
