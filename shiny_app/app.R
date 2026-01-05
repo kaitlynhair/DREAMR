@@ -33,6 +33,7 @@ source("load_studies.R")
 source("get_first_active_year.R")
 source("exports.R")
 source("flowchart.R")
+source("utils.R")
 
 # To use development build, set to TRUE
 is_dev_build <- FALSE

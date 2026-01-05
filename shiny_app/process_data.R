@@ -251,7 +251,7 @@ pull_openalex <- function(data) {
   }
   # Remove found from data
   if ("doi" %in% colnames(data)) {
-    data <- data %>% filter(!doi %in% oa_results$doi)
+    data <- data %>% filter(!normalize_doi(doi) %in% normalize_doi(oa_results$doi))
   }
   
   # Filter records with pmid and fetch
