@@ -1,7 +1,12 @@
-# Shiny app container for DREAMR
+# Use multi-stage build to share layer for separate shiny and rstudio images
+
+############################
+# Stage 1: build base image
+############################
+
 # for reproducibility, don't use latest rocker, always specify version
 # 4.5.2 has openalexR 3.0.0
-FROM rocker/shiny:4.5.2
+FROM rocker/r-ver:4.5.2 AS dreamr-base
 
 # System libraries for common R packages used by the app
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -45,11 +50,28 @@ RUN if [ "$SHINY_ENV" = "dev" ]; then \
     R -e "install.packages(c('digest'))"; \
   fi
 
+############################
+# Stage 2: Shiny runtime
+############################
+FROM rocker/shiny:4.5.2 AS shiny
+
+# copy R libraries from build stage
+COPY --from=dreamr-base \
+  /usr/local/lib/R/site-library \
+  /usr/local/lib/R/site-library
+
 # Copy app into Shiny Server apps dir (use compose volume for live dev)
 COPY shiny_app /srv/shiny-server/dreamr
 
-# Shiny Server listens on 3838
-EXPOSE 3838
+############################
+# Stage 3: RStudio runtime
+############################
+FROM rocker/rstudio:4.5.2 AS rstudio
 
-# Let the base image start shiny-server
-CMD ["/usr/bin/shiny-server"]
+# copy R libraries from build stage
+COPY --from=dreamr-base \
+  /usr/local/lib/R/site-library \
+  /usr/local/lib/R/site-library
+
+# project files
+COPY . /home/rstudio/project
