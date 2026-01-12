@@ -155,7 +155,7 @@ ui <- fluidPage(
                    selected = "countries", 
                    individual = TRUE     
                  ),
-                 leafletOutput("institution_map", height = 500) %>% withSpinner(color="#754E9B", type = 7)
+                 leafletOutput("institution_map", height = 500) %>% withSpinner(color="#754E9B", type = 7),
                  
                  # fluidRow(
                  #   column(6, plotlyOutput("oa_plot")),   # 6-column width (half of the row)
