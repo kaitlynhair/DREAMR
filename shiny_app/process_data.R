@@ -208,7 +208,7 @@ dreamr_extract <- function(data, progress = NULL) {
 #'
 #' For each identifier type, records that have already been matched are
 #' excluded from subsequent queries to avoid duplicates. If abstracts
-#' are not provided by OpenAlex, an empty column `ab` is added and filled
+#' are not provided by OpenAlex, an empty column `abstract` is added and filled
 #' with `NA`.
 #'
 #' @examples
@@ -487,41 +487,33 @@ extract_ror <- function(data){
 #' funder_data <- extract_funder(res, funder_full, citations_missing_data)
 #' }
 extract_funder <- function(data) {
-
-  # Step 1: Extract funder information and unnest grants
+  # Step 1: Extract funder information
   res_funder <- data %>%
-    dplyr::select(id, doi, grants) %>%
+    dplyr::select(id, doi, awards) %>%  # awards is named character vector
+    dplyr::filter(!purrr::map_lgl(awards, is.null)) %>%
     dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
-    tidyr::unnest_longer(grants) %>%
-    dplyr::filter(!is.na(grants))
-
-  # Step 2: Process funder information if rows are present
-  if (nrow(res_funder) > 0) {
-    # Remove "funder" entries and initialize award_id
-    res_funder <- res_funder %>%
-      dplyr::filter(grants_id != "funder") %>%
-      dplyr::mutate(award_id = NA)
-
-    # Assign award IDs to their corresponding grants
-    if (nrow(res_funder) > 1) {
-      for (i in 1:(nrow(res_funder) - 1)) {
-        if (res_funder$grants_id[i + 1] == "award_id") {
-          res_funder$award_id[i] <- res_funder$grants[i + 1]
-        }
-      }
-    }
-
-    # Filter out award_id rows and clean up the data
-    res_funder <- res_funder %>%
-      dplyr::filter(grants_id != "award_id") %>%
-      dplyr::select(-grants_id, funder_name = grants, doi) %>%
-      dplyr::mutate(method = "OpenAlex") %>%
-      replace(is.na(.), "Unknown") %>%
-      select(id, doi, funder_name, award_id, method)
-
-  }
-  # Step 3: Handle DOIs with missing funder information
+    dplyr::mutate(
+      awards_long = purrr::map(awards, ~ {
+        vec <- .x
+        names(vec)[names(vec) == "id"] <- "award_id"
+        names(vec)[names(vec) == "funder_display_name"] <- "funder_name"
+        tibble(
+          field = names(vec),
+          value = as.character(vec)
+        )
+      })
+    ) %>%
+    dplyr::select(-awards) %>%
+    tidyr::unnest(awards_long) %>%
+    dplyr::group_by(id, doi, field) %>%
+    dplyr::mutate(funder_index = row_number()) %>%
+    tidyr::pivot_wider(names_from = field, values_from = value) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(method = "OpenAlex")
+  
+  # Step 2: Handle DOIs with missing funder information
   res_funder_failed <- data %>%
+    dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
     dplyr::filter(!doi %in% res_funder$doi) %>%
     dplyr::mutate(
       funder_name = "Unknown",
@@ -530,9 +522,10 @@ extract_funder <- function(data) {
     ) %>%
     select(id, doi, funder_name, award_id, method)
 
-  # Step 4: Combine successful and failed funder data
+  # Step 3: Combine successful and failed funder data
   res_funder <- dplyr::bind_rows(res_funder, res_funder_failed)
 
+  # Step 4: For now, we only extract 1 funder_name per work
   res_funder <- format_doi(res_funder)
   res_funder <- res_funder %>%
     filter(!funder_name =="Unknown") %>%
@@ -768,7 +761,6 @@ oa_metadata <- function(data, identifier = c("pmid", "doi", "pmcid"),
 
   # Split into batches
   id_batches <- split(ids_prefixed, ceiling(seq_along(ids_prefixed) / batch_size))
-  
   results <- purrr::map_dfr(id_batches, function(batch) {
     purrr::map_dfr(batch, function(single_id) {
       ans <- try(
