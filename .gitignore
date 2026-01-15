@@ -60,3 +60,6 @@ renv/staging/
 
 # API cache
 */.cache
+
+# Temporary data
+data_tmp
