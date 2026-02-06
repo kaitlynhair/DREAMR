@@ -35,6 +35,7 @@ source("load_studies.R")
 source("get_first_active_year.R")
 source("exports.R")
 source("flowchart.R")
+source("utils.R")
 
 # To use development build, set to TRUE
 is_dev_build <- FALSE
@@ -154,7 +155,7 @@ ui <- fluidPage(
                    selected = "countries", 
                    individual = TRUE     
                  ),
-                 leafletOutput("institution_map", height = 500) %>% withSpinner(color="#754E9B", type = 7)
+                 leafletOutput("institution_map", height = 500) %>% withSpinner(color="#754E9B", type = 7),
                  
                  # fluidRow(
                  #   column(6, plotlyOutput("oa_plot")),   # 6-column width (half of the row)

@@ -1,13 +1,8 @@
-# Explicitly name shared volume
-# Ensures reference to the same named volume even if running compose from different folders
-volumes:
-  r_libs_shared:
-    name: r_libs_shared_global
-
 services:
   dreamr:
     build:
       context: .
+      target: shiny
       args:
         SHINY_ENV: ${SHINY_ENV:-prod}
     container_name: dreamr-shiny
@@ -15,14 +10,15 @@ services:
       - "3838:3838"
     volumes:
       - ./shiny_app:/srv/shiny-server/dreamr
-      - r_libs_shared:/usr/local/lib/R/site-library
     environment:
       - SHINY_LOG_LEVEL=INFO
       - SHINY_ENV=${SHINY_ENV:-prod}
     restart: unless-stopped
 
   rstudio:
-    image: rocker/rstudio:latest
+    build:
+      context: .
+      target: rstudio
     container_name: dreamr-rstudio
     ports:
       - "8787:8787"
@@ -31,6 +27,5 @@ services:
       - DISABLE_AUTH=false
     volumes:
       - ./:/home/rstudio/project
-      - r_libs_shared:/usr/local/lib/R/site-library
     working_dir: /home/rstudio/project
     restart: unless-stopped
