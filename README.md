@@ -1,24 +1,29 @@
 # Describing the REpresentation of Articles in Meta-Research (DREAMR)
 
 ## Background
-
 Meta-research rarely considers equity, diversity, and inclusion (EDI), meaning interventions designed to improve science could unintentionally disadvantage certain groups. Our project aims to address this by developing an automated workflow to evaluate the EDI characteristics of studies included in meta-research, similar to a 'Table 1' in clinical trials
 
 ## Aim
-
 Develop a workflow (and shiny app) to analyse the sample characteristics of articles included in meta-research. 
 
 ## Preprint
 
 [https://osf.io/preprints/metaarxiv/2yhux_v2](https://osf.io/preprints/metaarxiv/2yhux_v2)
 
-## ES Hackathon 2024 Project :rocket:
+## Development
+This project was developed as part of and Evidence Synthesis Hackathon Project (2024) and a RRIA Unconference project (2025) :rocket:
 
-Shared doc: [https://docs.google.com/document/d/1Ipl56W98NeFqhApFt6XT-oOFqGZsDJnOlNDGYQtbG90/edit?usp=sharing](https://docs.google.com/document/d/1Ipl56W98NeFqhApFt6XT-oOFqGZsDJnOlNDGYQtbG90/edit?usp=sharing)
+## Contributing
 
-## RRIA Unconference 2025 Project 🌟
+Contributions are welcome! 🎉  
 
-Shared doc:
+1. Clone the repository
+2. Create a new branch for your changes  
+   (`git checkout -b my-branch-name`)
+3. Commit and push your branch
+4. Open a pull request
+
+If you’re unsure whether something is in scope, feel free to open an issue to discuss it first.
 
 ## Run Locally with Docker
 
