@@ -1,4 +1,4 @@
-dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8, progress = NULL) {
+dreamr_extract_cached <- function(refdata, options, cache_dir = ".cache", hash_length = 8, progress = NULL) {
   # Ensure .cache folder exists
   if (!dir.exists(cache_dir)) {
     dir.create(cache_dir)
@@ -18,7 +18,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 
   # Otherwise, compute and save
   message("⏳ Cache miss: Running dreamr_extract() and saving to cache")
-  result <- dreamr_extract(refdata, progress = progress)
+  result <- dreamr_extract(refdata, options, progress = progress)
 
   # Save with full hash in filename
   saveRDS(result, file = file.path(cache_dir, paste0(short_hash, "_oa_data.rds")))
@@ -34,6 +34,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 #' and institution information, including country mapping.
 #'
 #' @param data Input dataset or query for `pull_openalex()`.
+#' @param options List of user options.
 #' @return A list with three elements:
 #'   \describe{
 #'     \item{pub_metadata}{Data frame of paper-level metadata (title, DOI, journal, publication year, OA status, funder, domain, etc.)}
@@ -49,7 +50,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 #' head(results$institutions)
 #' }
 #' @export
-dreamr_extract <- function(data, progress = NULL) {
+dreamr_extract <- function(data, options, progress = NULL) {
   p <- function(detail, amount) {
     if (!is.null(progress)) {
       try(progress(detail, amount), silent = TRUE)
@@ -102,8 +103,7 @@ dreamr_extract <- function(data, progress = NULL) {
     distinct()
   
   # De-duplicate ORCIDs before calling slow function
-  retrieve_all_orcids <- TRUE  # TO DO: user configs should all be stored in separate place
-  if (retrieve_all_orcids) {
+  if (!options$first_last_author_only) {
     unique_orcids <- unique(na.omit(authors$orcid))
   } else {
     unique_orcids <- authors |>

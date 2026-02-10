@@ -111,6 +111,15 @@ ui <- fluidPage(
       # Show detected file type
       textOutput("detected_file_type"),
       
+      tags$hr(),
+
+      # Advanced options
+      input_switch("show_advanced", "Advanced options", value = FALSE), 
+      conditionalPanel(
+        condition = "input.show_advanced",
+        checkboxInput("first_last_author_only", "Retrieve first and last authors only", FALSE),
+      ),
+
       width = 3
     ),
 
@@ -191,7 +200,13 @@ server <- function(input, output) {
     loading = FALSE
   )
 
-  # File upload
+  # User options
+  get_options <- reactive({list(
+      first_last_author_only = input$first_last_author_only
+    )
+  })
+
+
   # File upload
   observeEvent(input$uploadfile, {
     req(input$uploadfile)
@@ -240,9 +255,9 @@ server <- function(input, output) {
         incProgress(amount, detail = detail)
       }
       if (is_dev_build) 
-        oa_data <- dreamr_extract_cached(rv$refdata, progress = progress_fun)
+        oa_data <- dreamr_extract_cached(rv$refdata, progress=progress_fun, options=get_options())
       else
-        oa_data <- dreamr_extract(rv$refdata, progress = progress_fun)
+        oa_data <- dreamr_extract(rv$refdata, progress=progress_fun, options=get_options())
     })
 
     rv$authors <- oa_data$authors
