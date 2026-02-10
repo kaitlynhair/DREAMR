@@ -460,7 +460,18 @@ extract_ror <- function(data){
     
   }
   
-  coords_df <- purrr::map_dfr(unique_inst$ror_api, fetch_coords)
+  # make failure-proof if httr::GET(ror_url) in fetch_coords fails
+  safe_fetch_coords <- purrr::possibly(
+    fetch_coords,
+    otherwise = tibble(
+      latitude = NA_real_,
+      longitude = NA_real_,
+      continent_code = NA_character_,
+      continent_name = NA_character_
+    )
+  )
+
+  coords_df <- purrr::map_dfr(unique_inst$ror_api, safe_fetch_coords)
   
   # Check this if no coords found
   unique_inst <- bind_cols(unique_inst, coords_df)
