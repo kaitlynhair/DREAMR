@@ -195,7 +195,7 @@ compute_trust_icon <- function(oa_results, characteristic, manual_trust) {
 #' @examples
 #' summary_df <- generate_summary_table(oa_results, total_citations = 120)
 #' @export
-generate_summary_table <- function(oa_results, total_citations = NULL) {
+generate_summary_table <- function(oa_results, total_citations = NULL) {   # total_citations serves no purpose?
 
   # Optional overall retrieval summary
   found_n <- if (!is.null(oa_results$pub_metadata)) nrow(oa_results$pub_metadata) else 0

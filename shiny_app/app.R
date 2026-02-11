@@ -131,18 +131,18 @@ ui <- fluidPage(
           step = 1
         ),
 
-        # tags$hr(),
+        tags$hr(),
 
-        # h5("Update results"),
+        h5("Update results"),
 
-        # fileInput(
-        #   "upload_previous_results",
-        #   "For incremental updates of existing results, you can upload previoulsy retrieved results here. 
-        #   This avoids repeated metadata retrieval, significanlty speeding up the process.",
-        #   multiple = FALSE,
-        #   placeholder = "No file selected",
-        #   accept = c(".xml", ".csv", ".xlsx", ".xls")
-        # ),
+        fileInput(
+          "upload_previous_results",
+          "For incremental updates of existing results, you can upload previoulsy retrieved results here. 
+          This avoids repeated metadata retrieval, significantly speeding up the process.",
+          multiple = FALSE,
+          placeholder = "No file selected",
+          accept = c(".zip")
+        ),
       ),
       width = 3
     ),
@@ -232,6 +232,56 @@ server <- function(input, output) {
     )
   })
 
+  # Load previous results
+  observeEvent(input$upload_previous_results, {
+    
+    req(input$upload_previous_results)
+    
+    file_path <- input$upload_previous_results$datapath
+    if (tools::file_ext(file_path) != "zip") {
+      showNotification("Please upload a ZIP file.", type = "error")
+      return(NULL)
+    }
+
+    # Unzip into a clean temporary directory
+    temp_dir <- tempfile(pattern = "upload_")
+    dir.create(temp_dir)
+    unzip(file_path, exdir = temp_dir)
+    
+    expected_files <- c("authors.csv", "institutions.csv", "pub_metadata.csv")
+    actual_files <- list.files(
+      temp_dir,
+      recursive = TRUE,
+      full.names = TRUE
+    )
+    found_files <- basename(actual_files)
+    missing_files <- setdiff(expected_files, found_files)
+    
+    if (length(missing_files) > 0) {
+      showNotification(
+        paste("Missing expected CSV files:", paste(missing_files, collapse = ", ")),
+        type = "error"
+      )
+      return()
+    }
+    
+    # Extract full paths safely
+    authors_path <- actual_files[basename(actual_files) == "authors.csv"]
+    institutions_path <- actual_files[basename(actual_files) == "institutions.csv"]
+    pub_metadata_path <- actual_files[basename(actual_files) == "pub_metadata.csv"]
+    
+    authors_df <- read.csv(authors_path, stringsAsFactors = FALSE)
+    institutions_df <- read.csv(institutions_path, stringsAsFactors = FALSE)
+    pub_metadata_df <- read.csv(pub_metadata_path, stringsAsFactors = FALSE)
+    
+    previous_results <- list(
+      authors = authors_df,
+      institutions = institutions_df,
+      pub_metadata = pub_metadata_df
+    )
+    
+    rv$previous_results <- previous_results
+  })
 
   # File upload
   observeEvent(input$uploadfile, {
@@ -273,6 +323,31 @@ server <- function(input, output) {
   observeEvent(rv$refdata, {
 
     shiny::validate(need(rv$refdata, "No reference data available"))
+    
+    # Check if previous results exist and are not empty
+    previous_results_exist <- !is.null(rv$previous_results) &&
+        !is.null(rv$previous_results$pub_metadata) &&
+        !is.null(rv$previous_results$institutions) &&
+        !is.null(rv$previous_results$authors) &&
+        nrow(rv$previous_results$pub_metadata) > 0
+
+    # Subset refdata if previous results exist
+    refdata <- rv$refdata
+
+    if (previous_results_exist) {
+      existing_dois <- format_doi(rv$previous_results$pub_metadata)$doi
+      refdata <- rv$refdata |>
+        filter(!doi %in% existing_dois)
+      
+      if (nrow(refdata) < 1) {
+        rv$oa_data$pub_metadata <- rv$previous_results$pub_metadata
+        rv$oa_data$institutions <- rv$previous_results$institutions
+        rv$oa_data$authors <- rv$previous_results$authors
+        rv$institutions <- rv$oa_data$institutions
+        rv$authors <- rv$oa_data$authors
+        return()
+      }
+    }
 
     rv$loading <- TRUE
     # Progress feedback
@@ -281,14 +356,22 @@ server <- function(input, output) {
         incProgress(amount, detail = detail)
       }
       if (is_dev_build) 
-        oa_data <- dreamr_extract_cached(rv$refdata, progress=progress_fun, options=get_options())
+        oa_data <- dreamr_extract_cached(refdata, progress=progress_fun, options=get_options())
       else
-        oa_data <- dreamr_extract(rv$refdata, progress=progress_fun, options=get_options())
+        oa_data <- dreamr_extract(refdata, progress=progress_fun, options=get_options())
     })
+
+    # Append new results to previous results
+    if (previous_results_exist) {
+      oa_data$pub_metadata <- rbind(rv$previous_results$pub_metadata, oa_data$pub_metadata)
+      oa_data$institutions <- rbind(rv$previous_results$institutions, oa_data$institutions)
+      oa_data$authors <- rbind(rv$previous_results$authors, oa_data$authors)
+    }
 
     rv$authors <- oa_data$authors
     rv$institutions <- oa_data$institutions
     rv$oa_data <- oa_data
+
     rv$loading <- FALSE
   })
 
@@ -430,9 +513,7 @@ server <- function(input, output) {
 # Output --- summary table
   output$summary_table <- renderDT({
     shiny::validate(shiny::need(!is.null(rv$oa_data), "Summary not ready yet"))
-    
-    total_citations <- if (!is.null(rv$refdata)) nrow(rv$refdata) else NA_integer_
-    summary_df <- generate_summary_table(rv$oa_data, total_citations = total_citations)
+    summary_df <- generate_summary_table(rv$oa_data)
  
     datatable(
       summary_df,
