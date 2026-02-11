@@ -101,17 +101,50 @@ dreamr_extract <- function(data, options, progress = NULL) {
     rename(author_id = id) %>%
     mutate(source = "ORCID API") %>%
     distinct()
-  
-  # De-duplicate ORCIDs before calling slow function
-  if (!options$first_last_author_only) {
-    unique_orcids <- unique(na.omit(authors$orcid))
-  } else {
-    unique_orcids <- authors |>
-      filter(author_position %in% c("first", "last")) |>
-      pull(orcid) |>
-      na.omit() |>
-      unique()
+
+  selected_authors <- authors |> filter(FALSE)
+  authors_with_orcid <- authors |> 
+    filter(!is.na(orcid))
+
+  if (isTRUE(options$always_retrieve_first_author)) {
+    first_author <- authors_with_orcid |> filter(author_position == "first")
+    selected_authors <- bind_rows(selected_authors, first_author)
   }
+  
+  if (isTRUE(options$always_retrieve_last_author)) {
+    last_author <- authors_with_orcid |> filter(author_position == "last")
+    selected_authors <- bind_rows(selected_authors, last_author)
+  }
+
+  # Select middle authors
+  selected_authors <- selected_authors |>
+    group_split(openalex_id) |>
+    purrr::map_dfr(function(selected_df) {
+      
+      article_id <- selected_df$openalex_id[1]
+      
+      article_authors <- authors_with_orcid |>
+        filter(openalex_id == article_id)
+      
+      remaining_n <- options$max_authors - nrow(selected_df)
+      
+      if (remaining_n > 0) {
+        middle_authors <- article_authors |>
+          filter(!author_position %in% c("first", "last")) |>
+          filter(!orcid %in% selected_df$orcid) |>
+          slice_head(n = remaining_n)
+        
+        bind_rows(selected_df, middle_authors)
+      } else {
+        selected_df
+      }
+    })
+
+  unique_orcids <- selected_authors |>
+    pull(orcid) |>
+    na.omit() |>
+    unique()
+  
   orcid_progress_per_id <- 0.15 / length(unique_orcids)
   # Lookup only once per ORCID
   orcid_years <- purrr::map_dfr(
