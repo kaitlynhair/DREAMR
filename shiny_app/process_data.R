@@ -429,7 +429,6 @@ extract_institution <- function(data) {
 #'
 #' @export
 extract_ror <- function(data){
-  
   unique_inst <- data %>% 
     distinct(ror) %>% 
     mutate(ror_api = gsub("https://ror.org/", 
@@ -442,13 +441,14 @@ extract_ror <- function(data){
     ror_json <- jsonlite::fromJSON(ror_data)
     
     if (!is.null(ror_json$locations)) {
+      # Can rarely happen that we get more than 1 result per ror_url, hence return only first row
       tibble(
         latitude  = ror_json$locations$geonames_details$lat,
         longitude = ror_json$locations$geonames_details$lng,
         continent_code = ror_json$locations$geonames_details$continent_code,
         continent_name = ror_json$locations$geonames_details$continent_name
 
-      )
+      )[1, ]
     } else {
       tibble(latitude = NA_real_, 
              longitude = NA_real_,
@@ -460,7 +460,18 @@ extract_ror <- function(data){
     
   }
   
-  coords_df <- purrr::map_dfr(unique_inst$ror_api, fetch_coords)
+  # make failure-proof if httr::GET(ror_url) in fetch_coords fails
+  safe_fetch_coords <- purrr::possibly(
+    fetch_coords,
+    otherwise = tibble(
+      latitude = NA_real_,
+      longitude = NA_real_,
+      continent_code = NA_character_,
+      continent_name = NA_character_
+    )
+  )
+
+  coords_df <- purrr::map_dfr(unique_inst$ror_api, safe_fetch_coords)
   
   # Check this if no coords found
   unique_inst <- bind_cols(unique_inst, coords_df)

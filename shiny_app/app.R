@@ -343,7 +343,7 @@ server <- function(input, output) {
 
     
     map_data <- rv$institutions %>% 
-      group_by(country) %>% 
+      group_by(display_name) %>% 
       mutate(num_auth = n_distinct(author_id)) %>% 
       ungroup() %>% 
       arrange(desc(num_auth))
