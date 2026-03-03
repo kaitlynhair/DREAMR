@@ -107,6 +107,7 @@ dreamr_extract <- function(data, options, progress = NULL) {
     filter(!is.na(orcid))
 
   if (isTRUE(options$always_retrieve_first_author)) {
+    
     first_author <- authors_with_orcid |> filter(author_position == "first")
     selected_authors <- bind_rows(selected_authors, first_author)
   }
@@ -170,6 +171,12 @@ dreamr_extract <- function(data, options, progress = NULL) {
       )
     )
   
+  # if negative, first active year isn't accurate and ORCID not complete
+  authors <- authors %>%
+    mutate(first_active_year = ifelse(years_sice_first_pub < 0, "Unknown", first_active_year))
+  
+  # change all NA to unknown for flowchart counting
+  authors$first_active_year[is.na(authors$first_active_year)] <- "Unknown"
 
   # Add gender data
   p("Running first names through gender R package", 0.10)
