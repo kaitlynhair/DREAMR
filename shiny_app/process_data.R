@@ -164,6 +164,11 @@ dreamr_extract <- function(data, options, progress = NULL) {
   authors <- authors %>%
     left_join(orcid_years, by = "orcid") %>%
     mutate(
+      first_active_year = ifelse(
+        is.na(first_active_year), 
+        "Unknown", 
+        as.numeric(first_active_year))) %>%
+    mutate(
       years_sice_first_pub = ifelse(
         first_active_year == "Unknown",
         "Unknown",
