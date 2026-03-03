@@ -1,4 +1,4 @@
-dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8, progress = NULL) {
+dreamr_extract_cached <- function(refdata, options, cache_dir = ".cache", hash_length = 8, progress = NULL) {
   # Ensure .cache folder exists
   if (!dir.exists(cache_dir)) {
     dir.create(cache_dir)
@@ -18,7 +18,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 
   # Otherwise, compute and save
   message("⏳ Cache miss: Running dreamr_extract() and saving to cache")
-  result <- dreamr_extract(refdata, progress = progress)
+  result <- dreamr_extract(refdata, options, progress = progress)
 
   # Save with full hash in filename
   saveRDS(result, file = file.path(cache_dir, paste0(short_hash, "_oa_data.rds")))
@@ -34,6 +34,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 #' and institution information, including country mapping.
 #'
 #' @param data Input dataset or query for `pull_openalex()`.
+#' @param options List of user options.
 #' @return A list with three elements:
 #'   \describe{
 #'     \item{pub_metadata}{Data frame of paper-level metadata (title, DOI, journal, publication year, OA status, funder, domain, etc.)}
@@ -49,7 +50,7 @@ dreamr_extract_cached <- function(refdata, cache_dir = ".cache", hash_length = 8
 #' head(results$institutions)
 #' }
 #' @export
-dreamr_extract <- function(data, progress = NULL) {
+dreamr_extract <- function(data, options, progress = NULL) {
   p <- function(detail, amount) {
     if (!is.null(progress)) {
       try(progress(detail, amount), silent = TRUE)
@@ -100,20 +101,51 @@ dreamr_extract <- function(data, progress = NULL) {
     rename(author_id = id) %>%
     mutate(source = "ORCID API") %>%
     distinct()
-  
-  # De-duplicate ORCIDs before calling slow function
-  retrieve_all_orcids <- TRUE  # TO DO: user configs should all be stored in separate place
-  if (retrieve_all_orcids) {
-    unique_orcids <- unique(na.omit(authors$orcid))
-  } else {
-    
 
-    unique_orcids <- authors |>
-      filter(author_position %in% c("first", "last")) |>
-      pull(orcid) |>
-      na.omit() |>
-      unique()
+  selected_authors <- authors |> filter(FALSE)
+  authors_with_orcid <- authors |> 
+    filter(!is.na(orcid))
+
+  if (isTRUE(options$always_retrieve_first_author)) {
+    
+    first_author <- authors_with_orcid |> filter(author_position == "first")
+    selected_authors <- bind_rows(selected_authors, first_author)
   }
+  
+  if (isTRUE(options$always_retrieve_last_author)) {
+    last_author <- authors_with_orcid |> filter(author_position == "last")
+    selected_authors <- bind_rows(selected_authors, last_author)
+  }
+
+  # Select middle authors
+  selected_authors <- selected_authors |>
+    group_split(openalex_id) |>
+    purrr::map_dfr(function(selected_df) {
+      
+      article_id <- selected_df$openalex_id[1]
+      
+      article_authors <- authors_with_orcid |>
+        filter(openalex_id == article_id)
+      
+      remaining_n <- options$max_authors - nrow(selected_df)
+      
+      if (remaining_n > 0) {
+        middle_authors <- article_authors |>
+          filter(!author_position %in% c("first", "last")) |>
+          filter(!orcid %in% selected_df$orcid) |>
+          slice_head(n = remaining_n)
+        
+        bind_rows(selected_df, middle_authors)
+      } else {
+        selected_df
+      }
+    })
+
+  unique_orcids <- selected_authors |>
+    pull(orcid) |>
+    na.omit() |>
+    unique()
+  
   orcid_progress_per_id <- 0.15 / length(unique_orcids)
   # Lookup only once per ORCID
   orcid_years <- purrr::map_dfr(
@@ -144,6 +176,12 @@ dreamr_extract <- function(data, progress = NULL) {
       )
     )
   
+  # if negative, first active year isn't accurate and ORCID not complete
+  authors <- authors %>%
+    mutate(first_active_year = ifelse(years_sice_first_pub < 0, "Unknown", first_active_year))
+  
+  # change all NA to unknown for flowchart counting
+  authors$first_active_year[is.na(authors$first_active_year)] <- "Unknown"
 
   # Add gender data
   p("Running first names through gender R package", 0.10)

@@ -111,6 +111,39 @@ ui <- fluidPage(
       # Show detected file type
       textOutput("detected_file_type"),
       
+      tags$hr(),
+
+      # Advanced options
+      input_switch("show_advanced", "Advanced options", value = FALSE), 
+      conditionalPanel(
+        condition = "input.show_advanced",
+
+        h5("ORCID retrieval"),
+
+        checkboxInput(inputId = "always_retrieve_first_author", label = "Always retrieve first author", value = TRUE),
+        checkboxInput(inputId = "always_retrieve_last_author", label = "Always retrieve last author", value = TRUE),
+        numericInput(
+          "max_authors",
+          "Maximum number of retrieved authors per article",
+          value = 1000,
+          min = 1,
+          max = 1e9,
+          step = 1
+        ),
+
+        # tags$hr(),
+
+        # h5("Update results"),
+
+        # fileInput(
+        #   "upload_previous_results",
+        #   "For incremental updates of existing results, you can upload previoulsy retrieved results here. 
+        #   This avoids repeated metadata retrieval, significanlty speeding up the process.",
+        #   multiple = FALSE,
+        #   placeholder = "No file selected",
+        #   accept = c(".xml", ".csv", ".xlsx", ".xls")
+        # ),
+      ),
       width = 3
     ),
 
@@ -191,7 +224,15 @@ server <- function(input, output) {
     loading = FALSE
   )
 
-  # File upload
+  # User options
+  get_options <- reactive({list(
+      always_retrieve_first_author = input$always_retrieve_first_author,
+      always_retrieve_last_author = input$always_retrieve_last_author,
+      max_authors = input$max_authors
+    )
+  })
+
+
   # File upload
   observeEvent(input$uploadfile, {
     req(input$uploadfile)
@@ -240,9 +281,9 @@ server <- function(input, output) {
         incProgress(amount, detail = detail)
       }
       if (is_dev_build) 
-        oa_data <- dreamr_extract_cached(rv$refdata, progress = progress_fun)
+        oa_data <- dreamr_extract_cached(rv$refdata, progress=progress_fun, options=get_options())
       else
-        oa_data <- dreamr_extract(rv$refdata, progress = progress_fun)
+        oa_data <- dreamr_extract(rv$refdata, progress=progress_fun, options=get_options())
     })
 
     rv$authors <- oa_data$authors
