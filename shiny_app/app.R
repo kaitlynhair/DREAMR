@@ -137,8 +137,8 @@ ui <- fluidPage(
 
         fileInput(
           "upload_previous_results",
-          "For incremental updates of existing results, you can upload previoulsy retrieved results here. 
-          This avoids repeated metadata retrieval, significantly speeding up the process.",
+          "For incremental updates of existing results, you can upload previoulsy retrieved results here (select the .zip folder). 
+          This avoids repeated metadata retrieval, significantly speeding up the process. Note that you will still need to upload a new file above, which will be combined with the previously retrieved data.",
           multiple = FALSE,
           placeholder = "No file selected",
           accept = c(".zip")
