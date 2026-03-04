@@ -336,7 +336,7 @@ server <- function(input, output) {
 
     if (previous_results_exist) {
       existing_dois <- format_doi(rv$previous_results$pub_metadata)$doi
-      refdata <- rv$refdata |>
+      refdata <- format_doi(rv$refdata) |>
         filter(!doi %in% existing_dois)
       
       if (nrow(refdata) < 1) {
