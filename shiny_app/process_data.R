@@ -60,6 +60,14 @@ dreamr_extract <- function(data, options, progress = NULL) {
   # Pull raw OpenAlex results 
   p("Fetching OpenAlex records", 0.15)
   oa_results <- pull_openalex(data)
+  
+  if (length(oa_results) < 1) {
+    return(list(
+        pub_metadata = NULL,
+        institutions = NULL,
+        authors = NULL
+      ))
+  }
 
   # Add funder information
   p("Extracting funder information", 0.15)
@@ -294,15 +302,14 @@ pull_openalex <- function(data) {
     data_doi <- data %>% filter(!is.na(doi)) %>%
       mutate(identifier = paste0("doi:", doi))
     oa_result <- oa_metadata(data_doi, identifier = "doi")
-
     # If no abstract, make it NA
-    if (!"abstract" %in% colnames(oa_result)) {
+    if (length(oa_result) > 0 && !"abstract" %in% colnames(oa_result)) {
       oa_result <- oa_result %>% mutate(abstract = NA)
     }
     oa_results <- rbind(oa_result, oa_results)
   }
   # Remove found from data
-  if ("doi" %in% colnames(data)) {
+  if ("doi" %in% colnames(data) && length(oa_result) > 0) {
     data <- data %>% filter(!normalize_doi(doi) %in% normalize_doi(oa_results$doi))
   }
   
@@ -313,7 +320,7 @@ pull_openalex <- function(data) {
       data_pmid <- data %>% filter(!is.na(pmid)) %>%
         mutate(identifier = paste0("pmid:", pmid))
       oa_result <- oa_metadata(data_pmid, identifier = "pmid")
-      if (!"abstract" %in% colnames(oa_result)) {
+      if (length(oa_result) > 0 && !"abstract" %in% colnames(oa_result)) {
         oa_result <- oa_result %>% mutate(abstract = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
@@ -321,7 +328,7 @@ pull_openalex <- function(data) {
     }
   }
   # Remove found from data
-  if ("pmid" %in% colnames(oa_results) & "pmid" %in% colnames(data)) {
+  if (length(oa_result) > 0 && "pmid" %in% colnames(oa_results) & "pmid" %in% colnames(data)) {
     data <- data %>%
       mutate(pmid = ifelse(is.na(pmid), "", pmid)) %>%
       filter(!pmid %in% oa_results$pmid)
@@ -333,10 +340,10 @@ pull_openalex <- function(data) {
       data_pmcid <- data %>% filter(!is.na(pmcid)) %>%
         mutate(identifier = paste0("pmcid:", pmcid))
       oa_result <- oa_metadata(data_pmcid, identifier = "pmcid")
-      if (!"abstract" %in% colnames(oa_result)) {
+      if (length(oa_result) > 0 && !"abstract" %in% colnames(oa_result)) {
         oa_result <- oa_result %>% mutate(abstract = NA)
       }
-      if (!"license" %in% colnames(oa_result)) {
+      if (length(oa_result) > 0 && !"license" %in% colnames(oa_result)) {
         oa_result <- oa_result %>% mutate(license = NA)
       }
       oa_results <- rbind(oa_result, oa_results)
