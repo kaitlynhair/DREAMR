@@ -26,6 +26,7 @@ summarise_logical <- function(x) {
 }
 
 summarise_categorical <- function(x) {
+  
   # Replace NA with "Information missing"
   x <- ifelse(is.na(x), "Information missing", x)
   
@@ -36,8 +37,30 @@ summarise_categorical <- function(x) {
   vals <- paste0(names(tab), ": ", tab, "/", n_total, " (", pct, "%)")
   paste(vals, collapse = "<br>")   # line breaks between categories
 }
+
+summarise_country <- function(x){
+  
+  len <- length(unique(x$openalex_id))
+
+  df <- x %>%
+    select(openalex_id, country) %>%
+    distinct() %>%               
+    count(country) %>%           
+    mutate(pct = round(100 * n / len, 1))
+  
+  summary <- paste0(
+    df$country, ": ", 
+    df$n, "/", len, 
+    " (", df$pct, "%)"
+  )
+  
+  return(paste(summary, collapse = "<br>"))
+}
+  
+  
 summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
-  # Filter by role
+ 
+   # Filter by role
   vals <- authors_df %>%
     filter(author_position == role) %>%
     pull({{var}})
@@ -72,6 +95,7 @@ summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
 }
 
 summarise_n_per_paper <- function(authors_df, paper_id_col, inst_col) {
+  
   authors_df %>%
     # select only paper ID and institution columns, remove duplicates
     select(!!sym(paper_id_col), !!sym(inst_col)) %>%
@@ -196,7 +220,7 @@ compute_trust_icon <- function(oa_results, characteristic, manual_trust) {
 #' summary_df <- generate_summary_table(oa_results, total_citations = 120)
 #' @export
 generate_summary_table <- function(oa_results, total_citations = NULL) {   # total_citations serves no purpose?
-
+  
   # Optional overall retrieval summary
   found_n <- if (!is.null(oa_results$pub_metadata)) nrow(oa_results$pub_metadata) else 0
 
@@ -214,7 +238,7 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {   # tot
     "Years since first publication" = summarise_years_since_first_pub_all(oa_results$authors, var = years_sice_first_pub),
     "Number of institutions per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "affilitation_id"),
     "Number of countries per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "country_code"),
-    "Number of countries" = summarise_categorical(oa_results$institutions$country),
+    "Number of countries" = summarise_country(oa_results$institutions),
     "Type of institutions (first)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
     "Type of institutions (last)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
   ))
