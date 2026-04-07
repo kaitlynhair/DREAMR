@@ -306,7 +306,7 @@ pull_openalex <- function(data) {
     if (length(oa_result) > 0 && !"abstract" %in% colnames(oa_result)) {
       oa_result <- oa_result %>% mutate(abstract = NA)
     }
-    oa_results <- rbind(oa_result, oa_results)
+    oa_results <- dplyr::bind_rows(oa_result, oa_results)
   }
   # Remove found from data
   if ("doi" %in% colnames(data) && length(oa_result) > 0) {
@@ -323,8 +323,7 @@ pull_openalex <- function(data) {
       if (length(oa_result) > 0 && !"abstract" %in% colnames(oa_result)) {
         oa_result <- oa_result %>% mutate(abstract = NA)
       }
-      oa_results <- rbind(oa_result, oa_results)
-      
+      oa_results <- dplyr::bind_rows(oa_result, oa_results)
     }
   }
   # Remove found from data
@@ -346,7 +345,7 @@ pull_openalex <- function(data) {
       if (length(oa_result) > 0 && !"license" %in% colnames(oa_result)) {
         oa_result <- oa_result %>% mutate(license = NA)
       }
-      oa_results <- rbind(oa_result, oa_results)
+      oa_results <- dplyr::bind_rows(oa_result, oa_results)
       
     }
   }
