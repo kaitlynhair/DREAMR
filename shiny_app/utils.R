@@ -1,6 +1,6 @@
 normalize_doi <- function(x) {
-  x |>
-    tolower() |>
-    sub("^https?://doi.org/", "") |>
-    sub("^doi:", "")
+  x <- tolower(x)
+  x <- sub("^https?://doi.org/", "", x)
+  x <- sub("^doi:", "", x)
+  x
 }
