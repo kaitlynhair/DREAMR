@@ -192,12 +192,20 @@ summarise_years_since_first_pub_all <- function(authors_df, var) {
          "<br>All: ", all)
 }
 
+
+compute_completeness <- function(x) {
+  mean(!is.na(x) & x != "")
+}
+
 # Example: manual overrides
 manual_trust <- list(
   "Publication language" = 60,   # you know this one is dodgy
   "Funding source specified" = 50,
-  "Article type" = 60
+  "Article type" = 60,
+  "Proportion female authors (first author)" = 70,
+  "Proportion female authors (last author)" = 70
 )
+
 
 # Function to compute completeness-based trust (0–100 scale)
 # Compute trust based on completeness (for columns we know)
@@ -218,12 +226,14 @@ compute_trust_icon <- function(oa_results, characteristic, manual_trust) {
       "Field of research" = list(df = "pub_metadata", col = "domain"),
       "Article type" = list(df = "pub_metadata", col = "type"),
       "Number of authors per paper" = list(df = "authors", col = "author_id"),
+      "Proportion female authors (first author)" = list(df = "authors", col = "author_id"),
+      "Proportion female authors (last author)" = list(df = "authors", col = "author_id"),
       "Years since first publication" = list(df = "authors", col = "years_sice_first_pub"),
       "Number of institutions per paper" = list(df = "institutions", col = "affilitation_id"),
       "Number of countries per paper" = list(df = "institutions", col = "country_code"),
       "Number of countries" = list(df = "institutions", col = "country"),
-      "Type of institutions (first)" = list(df = "institutions", col = "type"),
-      "Type of institutions (last)" = list(df = "institutions", col = "type")
+      "Type of institutions (first author)" = list(df = "institutions", col = "type"),
+      "Type of institutions (last author)" = list(df = "institutions", col = "type")
     )
     
     trust_val <- NA_real_
