@@ -11,6 +11,7 @@
 # Shiny app caches and local artifacts
 shiny_app/app_cache/
 shiny_app/.Rhistory
+shiny_app/.Renviron
 shiny_app/.RData
 rsconnect/
 .httr-oauth
