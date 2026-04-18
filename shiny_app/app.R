@@ -177,7 +177,190 @@ ui <- fluidPage(
                  h4("Summary Table"),
                  DTOutput("summary_table") %>% withSpinner(color="#00695C", type=7)
         ),
-        tabPanel("Overview",
+        tabPanel(
+          "Data documentation",
+          bslib::page_fluid(
+            bslib::navset_card_tab(
+              full_screen = TRUE,
+              
+              bslib::nav_panel(
+                "General info",
+                
+                bslib::card(
+                  bslib::card_header("About these summary data"),
+                  bslib::card_body(
+                    p(
+                      "These summaries are derived primarily from OpenAlex metadata. ",
+                      "OpenAlex exposes work-level fields such as open access status, language, publication year, type, and institution-linked country and institution fields, ",
+                      "which makes it suitable for high-level descriptive summaries."
+                    ),
+                    p(
+                      strong("Important: "),
+                      "these values are best treated as descriptive metadata rather than audited ground truth. ",
+                      "Missingness, upstream source inconsistencies, and imperfect record linkage can all affect the summaries."
+                    )
+                  )
+                ),
+                
+                
+                bslib::layout_column_wrap(
+                  width = 1/2,
+                  
+                  bslib::card(
+                    bslib::card_header("General limitations"),
+                    bslib::card_body(
+                      tags$ul(
+                        tags$li(
+                          strong("Completeness: "),
+                          "some OpenAlex fields are missing for some records. Missing metadata often reflects incomplete indexing or source metadata rather than a true absence."
+                        ),
+                        tags$li(
+                          strong("Classification: "),
+                          "fields such as field of research, article type, and institution type rely on OpenAlex classification systems and may not always match manual expert judgement."
+                        ),
+                        tags$li(
+                          strong("Affiliations and linkage: "),
+                          "author, institution, and country summaries depend on correct parsing of authorships and affiliations. These links are useful but not perfect."
+                        ),
+                        tags$li(
+                          strong("Aggregation: "),
+                          "most outputs are descriptive summaries across the retrieved set and should be interpreted as broad indicators."
+                        )
+                      )
+                    )
+                  ),
+                  
+                  bslib::card(
+                    bslib::card_header("Variables that need extra caution"),
+                    bslib::card_body(
+                      tags$ul(
+                        tags$li(
+                          strong("Gender variables: "),
+                          "these do not come from OpenAlex. They are inferred separately using the ",
+                          tags$code("gender"),
+                          " package, so they are approximate and should not be treated as definitive measures of gender identity."
+                        ),
+                        tags$li(
+                          strong("Years since first publication: "),
+                          "this is a derived proxy based on indexed publication history, not a directly supplied OpenAlex variable. It may be affected by incomplete coverage of older works and author disambiguation errors."
+                        ),
+                        tags$li(
+                          strong("Funding source specified: "),
+                          "absence of recorded funder information should not be interpreted as evidence that no funding existed."
+                        )
+                      )
+                    )
+                  )
+                ),
+                
+                
+                bslib::card(
+                  bslib::card_header("How to use these summaries"),
+                  bslib::card_body(
+                    p(
+                      "These outputs are intended for descriptive overview and exploratory interpretation. ",
+                      "They are strongest for broad patterns, and weaker where they depend on inferred values, incomplete metadata, or affiliation matching."
+                    )
+                  )
+                )
+              ),
+              
+              bslib::nav_panel(
+                "Data dictionary",
+                
+                bslib::card(
+                  bslib::card_header("Data dictionary and interpretation notes"),
+                  bslib::card_body(
+                    tags$dl(
+                      tags$dt(strong("Open access")),
+                      tags$dd(
+                        "Based on OpenAlex open access metadata. Useful for broad description, but status may depend on available source and location metadata."
+                      ),
+                      
+                      tags$dt(strong("Publication language")),
+                      tags$dd(
+                        "Taken from the OpenAlex language field and converted from code to language name for display. Language metadata may be incomplete or patchy for some records."
+                      ),
+                      
+                      tags$dt(strong("Publication year")),
+                      tags$dd(
+                        "Taken from publication metadata. Usually reliable, but online-first and print dates can occasionally create inconsistencies."
+                      ),
+                      
+                      tags$dt(strong("Number of journals")),
+                      tags$dd(
+                        "Calculated from unique source or journal names in the retrieved set. Counts may be affected by title variants or inconsistent source naming."
+                      ),
+                      
+                      tags$dt(strong("Field of research")),
+                      tags$dd(
+                        "Reflects OpenAlex subject classification. Useful for broad grouping, but not a substitute for manual content classification."
+                      ),
+                      
+                      tags$dt(strong("Article type")),
+                      tags$dd(
+                        "Based on the OpenAlex work type field. Work types are informative, but source systems do not always label outputs consistently."
+                      ),
+                      
+                      tags$dt(strong("Funding source specified")),
+                      tags$dd(
+                        "Indicates whether funder information is recorded in metadata. Missing values often reflect incomplete metadata capture rather than true absence of funding."
+                      ),
+                      
+                      tags$dt(strong("Number of authors per paper")),
+                      tags$dd(
+                        "Calculated from linked author records per paper. Large collaborations, group authorship, and incomplete author lists may affect counts."
+                      ),
+                      
+                      tags$dt(strong("Proportion female authors (first author)")),
+                      tags$dd(
+                        "Not from OpenAlex. Derived using the ",
+                        tags$code("gender"),
+                        " package, so it is an inferred measure based on names and should be interpreted cautiously."
+                      ),
+                      
+                      tags$dt(strong("Proportion female authors (last author)")),
+                      tags$dd(
+                        "As above, this is based on inferred rather than recorded gender and may be inaccurate for many names and contexts."
+                      ),
+                      
+                      tags$dt(strong("Years since first publication")),
+                      tags$dd(
+                        "A derived proxy for publication history, taken from the ORCID record of authors. It depends on author disambiguation and the completeness of indexed historical outputs."
+                      ),
+                      
+                      tags$dt(strong("Number of institutions per paper")),
+                      tags$dd(
+                        "Calculated from distinct affiliations linked to each paper. Missing affiliations or imperfect institution matching may affect this count."
+                      ),
+                      
+                      tags$dt(strong("Number of countries per paper")),
+                      tags$dd(
+                        "Derived from institution-linked country codes. This reflects affiliation geography, not necessarily study setting or author nationality."
+                      ),
+                      
+                      tags$dt(strong("Number of countries")),
+                      tags$dd(
+                        "Summarises the distinct countries represented across affiliations in the retrieved set."
+                      ),
+                      
+                      tags$dt(strong("Type of institutions (first author)")),
+                      tags$dd(
+                        "Based on OpenAlex institution type metadata linked to the first-author affiliation. Depends on accurate affiliation linkage and institution classification. Note that one author may have many institutions, and the total number is likely to be larger than the number of references uploaded"
+                      ),
+                      
+                      tags$dt(strong("Type of institutions (last author)")),
+                      tags$dd(
+                        "Based on OpenAlex institution type metadata linked to the last-author affiliation. Depends on accurate affiliation linkage and institution classification. Note that one author may have many institutions, and the total number is likely to be larger than the number of references uploaded"
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        tabPanel("Author affiliations",
                  br(),
                  radioGroupButtons(
                    inputId = "map_type",
@@ -213,6 +396,8 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
+
+  
 
   # Reactive values for storage
   rv <- reactiveValues(
