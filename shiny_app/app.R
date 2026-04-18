@@ -151,7 +151,10 @@ ui <- fluidPage(
     # Main panel with tabs
     mainPanel(
       tabsetPanel(
-    
+        tabPanel("About",
+                 
+                 uiOutput("about")
+        ),
           tabPanel("Data completeness",
                  br(),
                  uiOutput("summary_status"),
@@ -397,7 +400,14 @@ ui <- fluidPage(
 # Define server logic
 server <- function(input, output) {
 
-  
+  output$about <- renderUI({
+    tags$iframe(
+      seamless = "seamless",
+      src = "about.html",
+      width = "100%",
+      height = 800
+    )
+  })
 
   # Reactive values for storage
   rv <- reactiveValues(
