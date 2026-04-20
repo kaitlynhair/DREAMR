@@ -281,7 +281,6 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {   # tot
   # Optional overall retrieval summary
   found_n <- if (!is.null(oa_results$pub_metadata)) nrow(oa_results$pub_metadata) else 0
 
-   browser()
   summary_table <- c(list(
     "Open access" = summarise_logical(oa_results$pub_metadata$is_oa),
     "Publication language" = summarise_categorical(oa_results$pub_metadata$language, convert_fn=convert_lang),
