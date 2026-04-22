@@ -24,8 +24,8 @@ inclusion (EDI)**. This means that interventions designed to improve
 research practices may unintentionally reinforce existing inequalities
 or overlook underrepresented groups.
 
-**DREAMR** (Diversity Reporting in Evidence and Meta-Research) addresses
-this gap.
+**DREAMR** (Describing the REpresentation of Articles in Meta-Research)
+addresses this gap.
 
 The tool provides an automated workflow to extract and summarise
 EDI-relevant characteristics from studies included in meta-research. In
@@ -54,7 +54,7 @@ to improve the relevance and impact of evidence synthesis.
 The DREAMR application and underlying workflow were developed through
 collaborative, community-driven initiatives:
 
--    🧠 Evidence Synthesis Hackathon (2024)
+-   🧠 Evidence Synthesis Hackathon (2024)
 
 -   🚀 RRIA Unconference (2025)
 
@@ -134,7 +134,7 @@ DREAMR provides **descriptive summaries**, not definitive measurements.
 
 When interpreting outputs, keep in mind:
 
--    Metadata completeness varies across sources
+-   Metadata completeness varies across sources
 
 -   Author and affiliation linkage is not perfect
 
@@ -165,9 +165,12 @@ You can contribute by:
 
 ## Issues and feature requests
 
-If you encounter any problems or have suggestions, please open an issue
-on the GitHub repository or email:
-[kaitlyn.hair\@ucl.ac.uk](mailto:kaitlyn.hair@ucl.ac.uk){.email}
+If you have general questions about the DREAMR framework or how we plan
+to evaluate it, please contact:
+[stephanie.zellers\@helsinki.fi](mailto:stephanie.zellers@helsinki.fi).
+If you encounter any problems with the app or have feedback or
+suggestions, please open an issue on the GitHub repository or email:
+[kaitlyn.hair\@ucl.ac.uk](mailto:kaitlyn.hair@ucl.ac.uk){.email}.
 
 ------------------------------------------------------------------------
 
