@@ -35,13 +35,13 @@ RUN R -e "install.packages(c(\
   'plotly','progressr','RCurl','readr','rsconnect','shiny','shinyalert',\
   'shinycssloaders','shinyhelper','shinythemes','shinyWidgets','stringr','XML',\
   'RefManageR','glue','bibliometrix','tidyr','openalexR','countrycode','purrr',\
-  'httr','zip', 'gender', 'DiagrammeR'\
+  'httr','zip', 'gender', 'DiagrammeR', 'ISOcodes'\
 ), repos='https://cloud.r-project.org')"
 
-# Install devtools and ASySD from GitHub (ASySD is not on CRAN)
-RUN R -e "if (!requireNamespace('devtools', quietly=TRUE)) install.packages('devtools', repos='https://cloud.r-project.org'); \
-          if (!requireNamespace('ASySD', quietly=TRUE)) devtools::install_github('camaradesuk/ASySD'); \
-          if (!requireNamespace('genderdata', quietly=TRUE)) devtools::install_github('lmullen/genderdata')"
+# Install remotes and ASySD from GitHub (ASySD is not on CRAN)
+RUN R -e "if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes', repos='https://cloud.r-project.org'); \
+          if (!requireNamespace('ASySD', quietly=TRUE)) remotes::install_github('camaradesuk/ASySD'); \
+          if (!requireNamespace('genderdata', quietly=TRUE)) remotes::install_github('lmullen/genderdata')"
 
 # Use SHINY_ENV as build-time argument
 ARG SHINY_ENV=prod

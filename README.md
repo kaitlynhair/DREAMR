@@ -1,16 +1,19 @@
-# Describing the REpresentation of Articles in Meta-Research (DREAMR)
+# Diversity Reporting in Evidence and Meta-Research (DREAMR)
 
 ## Background
+
 Meta-research rarely considers equity, diversity, and inclusion (EDI), meaning interventions designed to improve science could unintentionally disadvantage certain groups. Our project aims to address this by developing an automated workflow to evaluate the EDI characteristics of studies included in meta-research, similar to a 'Table 1' in clinical trials
 
 ## Aim
-Develop a workflow (and shiny app) to analyse the sample characteristics of articles included in meta-research. 
+
+Develop a workflow (and shiny app) to analyse the sample characteristics of articles included in meta-research.
 
 ## Preprint
 
 [https://osf.io/preprints/metaarxiv/2yhux_v2](https://osf.io/preprints/metaarxiv/2yhux_v2)
 
 ## Development
+
 This project was developed as part of and Evidence Synthesis Hackathon Project (2024) and a RRIA Unconference project (2025) :rocket:
 
 ## Contributing
@@ -66,6 +69,7 @@ This project requires R (≥ 4.1.0) and the following R packages:
 - DT
 - ggplot2
 - htmlwidgets
+- ISOcodes
 - knitr
 - networkD3
 - plotly
@@ -94,6 +98,7 @@ install.packages(c(
   "DT",
   "ggplot2",
   "htmlwidgets",
+  "ISOcodes",
   "knitr",
   "networkD3",
   "plotly",

@@ -1,0 +1,192 @@
+---
+title: 
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{=html}
+<style>
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color: #80CBC4;
+}
+</style>
+```
+## Why DREAMR?
+
+Meta-research plays a crucial role in improving how science is conducted
+and reported. However, it rarely considers **equity, diversity, and
+inclusion (EDI)**. This means that interventions designed to improve
+research practices may unintentionally reinforce existing inequalities
+or overlook underrepresented groups.
+
+**DREAMR** (Diversity Reporting in Evidence and Meta-Research) addresses
+this gap.
+
+The tool provides an automated workflow to extract and summarise
+EDI-relevant characteristics from studies included in meta-research. In
+doing so, it generates a structured overview---similar to a *"Table 1"*
+in clinical research---highlighting key attributes of authorship,
+affiliations, and publication characteristics.
+
+This allows researchers to:
+
+-   Identify potential biases in the evidence base
+
+-   Understand representation across studies and authors
+
+-   Incorporate EDI considerations into meta-research and systematic
+    reviews
+
+------------------------------------------------------------------------
+
+## Development
+
+![](irise_logo.png){align="right" width="142"}
+
+The idea behind DREAMR originated from the **iRISE project**, which aims
+to improve the relevance and impact of evidence synthesis.
+
+The DREAMR application and underlying workflow were developed through
+collaborative, community-driven initiatives:
+
+-    🧠 Evidence Synthesis Hackathon (2024)
+
+-   🚀 RRIA Unconference (2025)
+
+These events brought together researchers, developers, and
+meta-researchers to prototype and refine the tool.
+
+We are grateful to all contributors who have supported the conceptual
+development, coding, and design of DREAMR.
+
+------------------------------------------------------------------------
+
+## How does it work?
+
+DREAMR is designed to be simple and accessible:
+
+### 1. Upload your data
+
+Upload a file of references from your systematic review or meta-research
+project. Supported formats include:
+
+-   EndNote XML
+
+-   CSV files with a DOI column
+
+-   Excel files with a DOI column
+
+### 2. Metadata retrieval
+
+The app uses DOIs to query OpenAlex and retrieve publication and author
+metadata (e.g., affiliations, publication characteristics).
+
+Where possible, author-level information is enriched using ORCID
+records.
+
+**Note:** This step may take several minutes for larger datasets (\>100
+articles).
+
+After processing, you can review:
+
+-   How many records were successfully matched
+
+-   The completeness of metadata (e.g., authors, affiliations)
+
+This is important for interpreting downstream summaries.
+
+### 3. Explore the summary table
+
+Navigate to the **Summary Table** tab to view aggregated results.
+
+Be sure to read the **Data Documentation** tab to understand:
+
+-   What each variable represents
+
+-   How measures are derived
+
+-   Key limitations
+
+### 4. Visualise global representation
+
+Use the **Author Affiliations** tab to explore an interactive map
+showing institutional locations and country-level representation across
+your dataset
+
+### 5. Download your data
+
+From the **Downloads** page, you can export:
+
+-   The summary table
+
+-   The processed dataset used to generate results
+
+------------------------------------------------------------------------
+
+## Important considerations
+
+DREAMR provides **descriptive summaries**, not definitive measurements.
+
+When interpreting outputs, keep in mind:
+
+-    Metadata completeness varies across sources
+
+-   Author and affiliation linkage is not perfect
+
+-   Some variables (e.g., gender) are inferred and approximate
+
+-   Absence of data does not imply absence of a characteristic
+
+------------------------------------------------------------------------
+
+## Contributing
+
+DREAMR is an **open-source project**, and we welcome contributions from
+the community.
+
+If you'd like to get involved: <https://github.com/kaitlynhair/DREAMR>
+
+You can contribute by:
+
+-   Improving the codebase
+
+-   Suggesting new features
+
+-   Enhancing documentation
+
+-   Reporting bugs
+
+------------------------------------------------------------------------
+
+## Issues and feature requests
+
+If you encounter any problems or have suggestions, please open an issue
+on the GitHub repository or email:
+[kaitlyn.hair\@ucl.ac.uk](mailto:kaitlyn.hair@ucl.ac.uk){.email}
+
+------------------------------------------------------------------------
+
+## Citation
+
+If you use DREAMR in your research, please cite our preprint:
+
+Zellers S, Hair K, Heyard R, Smith S, Salholz-Hillel M, Thomson KHD, et
+al. Building a sample characteristics table for studies on peer-reviewed
+publications: Rationale and pipeline development. MetaArXiv; 2025.
+Available from: <https://osf.io/preprints/metaarxiv/2yhux>
+
+## Aknowledgements
+
+iRISE receives funding from the European Union's Horizon Europe research
+and innovation programme under grant agreement No 101094853. Views and
+opinions expressed are however those of the author(s) only and do not
+necessarily reflect those of the European Union or the European Research
+Executive Agency (ERA). Neither the European Union nor the ERA can be
+held responsible for them.
+
+## News

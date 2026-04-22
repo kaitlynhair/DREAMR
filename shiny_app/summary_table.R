@@ -1,5 +1,6 @@
 library(dplyr)
 library(tibble)
+library(ISOcodes)
 
 # helper summariser
 summarise_var <- function(x) {
@@ -25,28 +26,67 @@ summarise_logical <- function(x) {
   paste0(n_true, "/", n_total, " (", pct_true, "%)")
 }
 
-summarise_categorical <- function(x) {
+summarise_categorical <- function(x, convert_fn = NULL) {
   
-  # Replace NA with "Information missing"
   x <- ifelse(is.na(x), "Information missing", x)
   
-  tab <- table(x, useNA = "ifany")
-  n_total <- length(x)
-  pct <- round(100 * tab / sum(tab), 1)
+  # Apply conversion if provided (but not to "Information missing")
+  if (!is.null(convert_fn)) {
+    x <- ifelse(
+      x == "Information missing",
+      x,
+      convert_fn(x)
+    )
+  }
   
+  tab <- table(x)
+  n_total <- length(x)
+  
+  nm <- names(tab)
+  is_missing <- nm == "Information missing"
+  
+  # Missing first, then ascending count, then alphabetical tie-break
+  ord <- c(
+    which(is_missing),
+    which(!is_missing)[order(tab[!is_missing], nm[!is_missing])]
+  )
+  
+  tab <- tab[ord]
+  
+  pct <- round(100 * tab / sum(tab), 1)
   vals <- paste0(names(tab), ": ", tab, "/", n_total, " (", pct, "%)")
-  paste(vals, collapse = "<br>")   # line breaks between categories
+  
+  paste(vals, collapse = "<br>")
 }
 
-summarise_country <- function(x){
+convert_lang <- function(x) {
+  lookup <- ISOcodes::ISO_639_2
   
-  len <- length(unique(x$openalex_id))
+  out <- lookup$Name[match(x, lookup$Alpha_2)]
+  
+  ifelse(is.na(out), x, out)
+}
 
+summarise_country <- function(x, metadata){
+  
+  len <- length(unique(metadata$id))
+  
   df <- x %>%
-    select(openalex_id, country) %>%
-    distinct() %>%               
-    count(country) %>%           
-    mutate(pct = round(100 * n / len, 1))
+    dplyr::select(openalex_id, country) %>%
+    dplyr::mutate(
+      country = ifelse(is.na(country), "Information missing", country)
+    ) %>%
+    dplyr::distinct() %>%               
+    dplyr::count(country, name = "n") %>%           
+    dplyr::mutate(pct = round(100 * n / len, 1))
+  
+  # Order results
+  df <- df %>%
+    dplyr::mutate(
+      missing_first = country != "Information missing"
+    ) %>%
+    dplyr::arrange(missing_first, n, country) %>%
+    dplyr::select(-missing_first)
   
   summary <- paste0(
     df$country, ": ", 
@@ -54,19 +94,19 @@ summarise_country <- function(x){
     " (", df$pct, "%)"
   )
   
-  return(paste(summary, collapse = "<br>"))
+  paste(summary, collapse = "<br>")
 }
   
-  
 summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
- 
-   # Filter by role
+  
+  # Filter by role
   vals <- authors_df %>%
     filter(author_position == role) %>%
-    pull({{var}})
+    pull({{ var }})
   
   # Handle categorical variables with optional filtering
   if (!is.numeric(vals)) {
+    
     # Replace NA with "Information missing"
     vals <- ifelse(is.na(vals), "Information missing", vals)
     
@@ -86,6 +126,14 @@ summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
       df <- df %>% dplyr::filter(category %in% include_only)
     }
     
+    # Order: Information missing first, then ascending count, then alphabetical
+    df <- df %>%
+      dplyr::mutate(
+        missing_first = category != "Information missing"
+      ) %>%
+      dplyr::arrange(missing_first, count, category) %>%
+      dplyr::select(-missing_first)
+    
     summary <- paste0(df$category, ": ", df$count, "/", n_total, " (", df$pct, "%)")
     return(paste(summary, collapse = "<br>"))
   }
@@ -93,7 +141,6 @@ summarise_author_role <- function(authors_df, role, var, include_only = NULL) {
   # Otherwise just use numeric summariser
   return(summarise_var(vals))
 }
-
 summarise_n_per_paper <- function(authors_df, paper_id_col, inst_col) {
   
   authors_df %>%
@@ -145,12 +192,20 @@ summarise_years_since_first_pub_all <- function(authors_df, var) {
          "<br>All: ", all)
 }
 
+
+compute_completeness <- function(x) {
+  mean(!is.na(x) & x != "")
+}
+
 # Example: manual overrides
 manual_trust <- list(
   "Publication language" = 60,   # you know this one is dodgy
   "Funding source specified" = 50,
-  "Article type" = 60
+  "Article type" = 60,
+  "Proportion female authors (first author)" = 70,
+  "Proportion female authors (last author)" = 70
 )
+
 
 # Function to compute completeness-based trust (0–100 scale)
 # Compute trust based on completeness (for columns we know)
@@ -171,12 +226,14 @@ compute_trust_icon <- function(oa_results, characteristic, manual_trust) {
       "Field of research" = list(df = "pub_metadata", col = "domain"),
       "Article type" = list(df = "pub_metadata", col = "type"),
       "Number of authors per paper" = list(df = "authors", col = "author_id"),
+      "Proportion female authors (first author)" = list(df = "authors", col = "author_id"),
+      "Proportion female authors (last author)" = list(df = "authors", col = "author_id"),
       "Years since first publication" = list(df = "authors", col = "years_sice_first_pub"),
       "Number of institutions per paper" = list(df = "institutions", col = "affilitation_id"),
       "Number of countries per paper" = list(df = "institutions", col = "country_code"),
       "Number of countries" = list(df = "institutions", col = "country"),
-      "Type of institutions (first)" = list(df = "institutions", col = "type"),
-      "Type of institutions (last)" = list(df = "institutions", col = "type")
+      "Type of institutions (first author)" = list(df = "institutions", col = "type"),
+      "Type of institutions (last author)" = list(df = "institutions", col = "type")
     )
     
     trust_val <- NA_real_
@@ -226,21 +283,21 @@ generate_summary_table <- function(oa_results, total_citations = NULL) {   # tot
 
   summary_table <- c(list(
     "Open access" = summarise_logical(oa_results$pub_metadata$is_oa),
-    "Publication language" = summarise_categorical(oa_results$pub_metadata$language),
+    "Publication language" = summarise_categorical(oa_results$pub_metadata$language, convert_fn=convert_lang),
     "Publication year" = summarise_var(oa_results$pub_metadata$publication_year),
     "Number of journals" = as.character(length(unique(oa_results$pub_metadata$source_display_name))),
     "Field of research" = summarise_categorical(oa_results$pub_metadata$domain),
     "Article type" = summarise_categorical(oa_results$pub_metadata$type),
     "Funding source specified" =  summarise_categorical(oa_results$pub_metadata$funder_name),
     "Number of authors per paper" = summarise_n_per_paper(oa_results$authors, paper_id_col = "openalex_id", inst_col = "author_id"),
-    "Proportion female authors (first)" =summarise_author_role(oa_results$authors, role ="first", var="gender", include_only="female"),
-    "Proportion female authors (last)" = summarise_author_role(oa_results$authors, role ="last", var="gender", include_only="female"),
+    "Proportion female authors (first author)" =summarise_author_role(oa_results$authors, role ="first", var="gender", include_only="female"),
+    "Proportion female authors (last author)" = summarise_author_role(oa_results$authors, role ="last", var="gender", include_only="female"),
     "Years since first publication" = summarise_years_since_first_pub_all(oa_results$authors, var = years_sice_first_pub),
     "Number of institutions per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "affilitation_id"),
     "Number of countries per paper" = summarise_n_per_paper(oa_results$institutions, paper_id_col = "openalex_id", inst_col = "country_code"),
-    "Number of countries" = summarise_country(oa_results$institutions),
-    "Type of institutions (first)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
-    "Type of institutions (last)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
+    "Number of countries" = summarise_country(oa_results$institutions, oa_results$pub_metadata),
+    "Type of institutions (first author)" = summarise_author_role(oa_results$institutions, role = "first", var = type),
+    "Type of institutions (last author)" = summarise_author_role(oa_results$institutions, role = "last", var = type)
   ))
 
   # Add trust scores
