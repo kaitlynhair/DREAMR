@@ -1,4 +1,4 @@
-# Diversity Reporting in Evidence and Meta-Research (DREAMR)
+Describing the REpresentation of Articles in Meta-Research (DREAMR)
 
 ## Background
 
