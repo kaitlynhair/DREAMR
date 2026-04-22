@@ -573,12 +573,13 @@ server <- function(input, output) {
   # Location - render leaflet map -----
   output$institution_map <- renderLeaflet({
     
-    validate(
-      need(nrow(rv$institutions) > 0, "No overview available. Please input a file.")
+    shiny::validate(
+      need(nrow(rv$institutions) > 0, 'No overview available. Please input a file.')
     )
     
     if (input$map_type == "countries") {
-    
+      
+
       world <- rnaturalearth::ne_countries(returnclass = "sf") %>%
         select(iso_a2, name_long, geometry)
 
