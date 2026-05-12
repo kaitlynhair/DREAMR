@@ -116,9 +116,10 @@ install.packages(c(
   "XML"
 ))
 
-# Install ASySD from GitHub
+# Install packages from GitHub
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
 remotes::install_github("ESHackathon/ASySD")
+remotes::install_github("lmullen/genderdata")
 ```
