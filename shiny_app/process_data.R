@@ -549,8 +549,20 @@ extract_ror <- function(data){
 #' funder_data <- extract_funder(res, funder_full, citations_missing_data)
 #' }
 extract_funder <- function(data) {
-  # Step 1: Extract funder information
-  res_funder <- data %>%
+  
+  # Check there is data in the awards column
+  if (all(is.na(data$awards))) {
+    
+    res_awards <- tibble(
+      doi = character(),
+      funder_name = character(),
+      award_id = character()
+    )
+    
+  } else {
+  
+  # Step 1: Extract funder information with awards
+  res_awards <- data %>%
     dplyr::select(id, doi, awards) %>%  # awards is named character vector
     dplyr::filter(!purrr::map_lgl(awards, is.null)) %>%
     dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
@@ -570,31 +582,62 @@ extract_funder <- function(data) {
     dplyr::group_by(id, doi, field) %>%
     dplyr::mutate(funder_index = row_number()) %>%
     tidyr::pivot_wider(names_from = field, values_from = value) %>%
-    dplyr::ungroup() %>%
-    dplyr::mutate(method = "OpenAlex")
+    dplyr::ungroup()
+  }
   
-  # Step 2: Handle DOIs with missing funder information
+  # Check there is data in the funders column
+  if (all(is.na(data$funders))) {
+    
+    res_funder <- tibble(
+      doi = character(),
+      funder_name = character()
+    )
+    
+  } else {
+    
+  # Step 2: Extract funder information with no awards
+  res_funder <- data %>%
+    dplyr::select(id, doi, funders) %>%
+    dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
+    tidyr::unnest_longer(funders) %>%
+    tidyr::unnest_wider(funders, names_sep = "_") %>%
+    dplyr::filter(!is.na(funders_display_name)) %>%
+    dplyr::select(id, doi, funder_name = funders_display_name) %>% 
+    dplyr::distinct() %>% 
+    dplyr::anti_join(
+      res_awards,
+      by = c("doi", "funder_name")
+    )
+  }
+  
+  # Step 3: Add the funders with no award data to the funders with award data 
+  res_funder_awards <- bind_rows(res_awards, res_funder) %>% 
+    dplyr::mutate(method = "OpenAlex",
+                  award_id = ifelse(is.na(award_id), "Unknown", award_id))
+  
+  # Step 4: Handle DOIs with missing funder information
   res_funder_failed <- data %>%
     dplyr::mutate(doi = stringr::str_remove(doi, "https://doi.org/")) %>%
-    dplyr::filter(!doi %in% res_funder$doi) %>%
+    dplyr::filter(!doi %in% res_funder_awards$doi) %>%
     dplyr::mutate(
       funder_name = "Unknown",
       award_id = "Unknown",
       method = "OpenAlex"
     ) %>%
-    select(id, doi, funder_name, award_id, method)
+    dplyr::select(id, doi, funder_name, award_id, method)
 
-  # Step 3: Combine successful and failed funder data
-  res_funder <- dplyr::bind_rows(res_funder, res_funder_failed)
+  # Step 5: Combine successful and failed funder data
+  res_funder <- dplyr::bind_rows(res_funder_awards, res_funder_failed)
 
-  # Step 4: For now, we only extract 1 funder_name per work
+  # Step 6: For now, we only extract 1 funder_name per work
   res_funder <- format_doi(res_funder)
+  
   res_funder <- res_funder %>%
-    filter(!funder_name =="Unknown") %>%
-    group_by(id) %>%
-    slice_head() %>%
-    ungroup() %>%
-    select(id, funder_name)
+    dplyr::filter(!funder_name =="Unknown") %>%
+    dplyr::group_by(id) %>%
+    dplyr::slice_head() %>%
+    dplyr::ungroup() %>%
+    dplyr::select(id, funder_name)
 
   return(res_funder)
 }
